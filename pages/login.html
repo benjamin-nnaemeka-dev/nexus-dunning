@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Dunning — Sign In</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="auth-body">
+    <div class="card">
+        <h1>Welcome back</h1>
+        <p class="subtitle">Sign in to your Nexus Dunning account.</p>
+
+        <div class="alert alert-error" id="error">
+            <span class="material-symbols-outlined">error</span>
+            <span id="error-text"></span>
+        </div>
+
+        <div class="field">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="you@company.com" />
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Your password" />
+        </div>
+
+        <button class="btn btn-primary btn-full" id="login-btn">
+            Sign in
+        </button>
+
+        <div class="auth-footer">
+            Don't have an account? <a href="signup.html">Sign up</a>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/supabase.js"></script>
+    <script>
+        async function login() {
+            const email = document.getElementById('email').value.trim()
+            const password = document.getElementById('password').value
+            const errorEl = document.getElementById('error')
+            const errorText = document.getElementById('error-text')
+            const btn = document.getElementById('login-btn')
+
+            errorEl.classList.remove('show')
+
+            btn.disabled = true
+            btn.textContent = 'Signing in...'
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password })
+
+            if (error) {
+                errorText.textContent = error.message
+                errorEl.classList.add('show')
+                btn.disabled = false
+                btn.textContent = 'Sign in'
+                return
+            }
+
+            const { data: business } = await supabaseClient
+                .from('businesses')
+                .select('is_onboarded')
+                .eq('user_id', data.user.id)
+                .single()
+
+            window.location.href = (business && !business.is_onboarded)
+                ? 'onboarding.html'
+                : 'dashboard.html'
+        }
+
+        document.getElementById('login-btn').addEventListener('click', login)
+
+        // Allow Enter key to submit
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') login()
+        })
+    </script>
+</body>
+
+</html>

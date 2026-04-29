@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus — Setup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="auth-body">
+    <div class="card card-wide">
+        <h1>Set up your account</h1>
+        <p class="subtitle">Connect your payment and notification channels to start recovering failed payments.</p>
+
+        <div class="alert alert-error" id="error">
+            <span class="material-symbols-outlined">error</span>
+            <span id="error-text"></span>
+        </div>
+        <div class="alert alert-success" id="success">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span id="success-text"></span>
+        </div>
+
+        <!-- Paystack -->
+        <div class="section">
+            <div class="section-title">
+                Paystack
+            </div>
+            <div class="field">
+                <label>Secret key <span class="required">*</span></label>
+                <input type="password" id="paystack_secret_key" placeholder="sk_live_..." />
+                <p class="hint">Found in Paystack dashboard → Settings → API Keys</p>
+            </div>
+
+        </div>
+
+        <!-- Billing portal -->
+        <div class="section">
+            <div class="field">
+                <label>Billing portal URL <span class="required">*</span></label>
+                <input type="url" id="billing_portal_url" placeholder="https://billing.yourapp.com" />
+                <p class="hint">The URL where your customers update their payment details. Used as the call-to-action in
+                    all recovery emails.</p>
+            </div>
+        </div>
+
+        <!-- WhatsApp -->
+        <div class="section">
+            <div class="section-title">
+                WhatsApp
+                <span class="optional">(Meta Cloud API)</span>
+            </div>
+            <div class="field">
+                <label>Phone number ID</label>
+                <input type="text" id="whatsapp_phone_id" placeholder="Your WhatsApp phone number ID" />
+            </div>
+            <div class="field">
+                <label>Access token</label>
+                <input type="password" id="whatsapp_access_token" placeholder="Your Meta access token" />
+                <p class="hint">Found in Meta Developer dashboard → WhatsApp → API Setup</p>
+            </div>
+        </div>
+
+        <!-- Slack -->
+        <div class="section">
+            <div class="section-title">
+                Slack alerts
+                <span class="optional">(optional)</span>
+            </div>
+            <div class="field">
+                <label>Webhook URL</label>
+                <input type="text" id="slack_webhook_url" placeholder="https://hooks.slack.com/..." />
+                <p class="hint">Create an incoming webhook in your Slack app settings</p>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="save-btn">Save and continue</button>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/supabase.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+        function showError(msg) {
+            document.getElementById('error-text').textContent = msg
+            document.getElementById('error').classList.add('show')
+        }
+
+        function hideAlerts() {
+            document.getElementById('error').classList.remove('show')
+            document.getElementById('success').classList.remove('show')
+        }
+
+        function validate() {
+            const required = ['paystack_secret_key', 'billing_portal_url']
+            let valid = true
+            required.forEach(id => {
+                const el = document.getElementById(id)
+                if (!el.value.trim()) {
+                    el.classList.add('invalid')
+                    valid = false
+                } else {
+                    el.classList.remove('invalid')
+                }
+            })
+            return valid
+        }
+
+        async function saveOnboarding() {
+            const session = await checkAuth()
+            if (!session) return
+
+            hideAlerts()
+
+            if (!validate()) {
+                showError('Please fill in all required fields.')
+                return
+            }
+
+            const btn = document.getElementById('save-btn')
+            btn.disabled = true
+            btn.textContent = 'Saving...'
+
+            const updates = {
+                paystack_secret_key: document.getElementById('paystack_secret_key').value.trim(),
+                billing_portal_url: document.getElementById('billing_portal_url').value.trim(),
+                whatsapp_phone_id: document.getElementById('whatsapp_phone_id').value.trim(),
+                whatsapp_access_token: document.getElementById('whatsapp_access_token').value.trim(),
+                slack_webhook_url: document.getElementById('slack_webhook_url').value.trim(),
+                is_onboarded: true,
+                updated_at: new Date().toISOString()
+            }
+
+            const { error } = await supabaseClient
+                .from('businesses')
+                .update(updates)
+                .eq('user_id', session.user.id)
+
+            btn.disabled = false
+            btn.textContent = 'Save and continue'
+
+            if (error) { showError('Failed to save your settings. Please try again.'); return }
+
+            window.location.href = 'dashboard.html'
+        }
+
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', () => input.classList.remove('invalid'))
+        })
+
+        document.getElementById('save-btn').addEventListener('click', saveOnboarding)
+        checkAuth()
+    </script>
+</body>
+
+</html>

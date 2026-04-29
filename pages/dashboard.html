@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus — Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <nav class="nav">
+        <div class="nav-brand">Nexus Dunning</div>
+        <div class="nav-right">
+            <span class="nav-email" id="nav-email"></span>
+            <button class="btn btn-ghost" id="signout-btn">
+                <span class="material-symbols-outlined" style="font-size:18px;">logout</span>
+                Sign out
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <div class="page-title">Dashboard</div>
+            <div class="page-subtitle" id="page-subtitle"></div>
+        </div>
+
+        <!-- Webhook URL section -->
+        <div class="webhook-box" id="webhook-box" style="margin-bottom:24px;">
+            <div class="webhook-title">
+                <span class="material-symbols-outlined" style="color:#16a34a;">check_circle</span>
+                Your Paystack webhook URL
+            </div>
+            <p class="webhook-desc">Paste this URL in Paystack dashboard → Settings → API Keys & Webhooks → Webhook
+                URL.</p>
+            <div class="webhook-row">
+                <input type="text" id="webhook-url" readonly />
+                <button class="btn btn-primary" id="copy-btn">
+                    <span class="material-symbols-outlined" style="font-size:16px;">content_copy</span>
+                    Copy
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">
+                    <span class="material-symbols-outlined">credit_card_off</span>
+                    Total failed
+                </div>
+                <div class="stat-value" id="stat-total">—</div>
+                <div class="stat-sub">All time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    Recovered
+                </div>
+                <div class="stat-value" id="stat-recovered">—</div>
+                <div class="stat-sub">Sequences resolved</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <span class="material-symbols-outlined">percent</span>
+                    Recovery rate
+                </div>
+                <div class="stat-value" id="stat-rate">—</div>
+                <div class="stat-sub">Recovered / total</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <span class="material-symbols-outlined">pending</span>
+                    Active sequences
+                </div>
+                <div class="stat-value" id="stat-active">—</div>
+                <div class="stat-sub">In progress</div>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <div class="section-heading">Recent payment events</div>
+            <div class="section-count" id="section-count"></div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Reason</th>
+                        <th>Retries</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="events-table">
+                    <tr>
+                        <td colspan="6" class="state-cell">
+                            <span class="material-symbols-outlined">hourglass_empty</span>
+                            Loading...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/supabase.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+        async function loadDashboard() {
+            const session = await checkAuth()
+            if (!session) return
+
+            document.getElementById('nav-email').textContent = session.user.email
+
+            // Fetch this user's business
+            const { data: business, error: bizError } = await supabaseClient
+                .from('businesses')
+                .select('id, business_name')
+                .eq('user_id', session.user.id)
+                .single()
+
+            if (bizError || !business) {
+                document.getElementById('events-table').innerHTML = `
+                    <tr><td colspan="6" class="state-cell">
+                        <span class="material-symbols-outlined">warning</span>
+                        Could not load business data.
+                    </td></tr>`
+                return
+            }
+
+            document.getElementById('page-subtitle').textContent = business.business_name || ''
+
+            // Populate webhook URL
+            const webhookUrl = `https://nonpreservative-debbie-unanswerably.ngrok-free.dev/webhook-test/paystack/charge-failed?token=${business.id}`
+            document.getElementById('webhook-url').value = webhookUrl
+            document.getElementById('webhook-box').style.display = 'block'
+
+            document.getElementById('copy-btn').addEventListener('click', () => {
+                navigator.clipboard.writeText(webhookUrl)
+                document.getElementById('copy-btn').innerHTML = `
+                    <span class="material-symbols-outlined" style="font-size:16px;">check</span> Copied!`
+                setTimeout(() => {
+                    document.getElementById('copy-btn').innerHTML = `
+                        <span class="material-symbols-outlined" style="font-size:16px;">content_copy</span> Copy`
+                }, 2000)
+            })
+
+            // Fetch payment events scoped to this business only
+            const { data: events, error } = await supabaseClient
+                .from('payment_events')
+                .select('*')
+                .eq('business_id', business.id)
+                .order('created_at', { ascending: false })
+                .limit(50)
+
+            if (error || !events) return
+
+            // Stats
+            const total = events.length
+            const recovered = events.filter(e => e.is_resolved).length
+            const active = events.filter(e => !e.is_resolved).length
+            const rate = total > 0 ? Math.round((recovered / total) * 100) + '%' : '—'
+
+            document.getElementById('stat-total').textContent = total
+            document.getElementById('stat-recovered').textContent = recovered
+            document.getElementById('stat-rate').textContent = rate
+            document.getElementById('stat-active').textContent = active
+            document.getElementById('section-count').textContent = total > 0 ? `${total} events` : ''
+
+            const tbody = document.getElementById('events-table')
+
+            if (events.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="6" class="state-cell">
+                        <span class="material-symbols-outlined">credit_card</span>
+                        No payment events yet. When a payment fails, it will appear here.
+                    </td></tr>`
+                return
+            }
+
+            tbody.innerHTML = events.map(e => {
+                const amount = `${e.currency} ${(e.amount / 100).toLocaleString()}`
+                const date = new Date(e.created_at).toLocaleDateString('en-NG', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                })
+                const retries = `${e.retry_count ?? 0}/3`
+                const statusBadge = e.is_resolved
+                    ? `<span class="badge badge-resolved">
+                            <span class="material-symbols-outlined">check</span> Recovered
+                       </span>`
+                    : `<span class="badge badge-pending">
+                            <span class="material-symbols-outlined">schedule</span> Pending
+                       </span>`
+
+                return `
+                <tr>
+                    <td>${e.customer_email}</td>
+                    <td>${amount}</td>
+                    <td>${e.failure_reason || '—'}</td>
+                    <td>${retries}</td>
+                    <td>${statusBadge}</td>
+                    <td>${date}</td>
+                </tr>`
+            }).join('')
+        }
+
+        document.getElementById('signout-btn').addEventListener('click', signOut)
+        loadDashboard()
+    </script>
+</body>
+
+</html>

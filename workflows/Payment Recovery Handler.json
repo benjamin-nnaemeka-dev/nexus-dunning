@@ -1,0 +1,2861 @@
+{
+  "name": "Payment Recovery Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7863c9bf-046e-4eef-89a7-2f408dd409d2",
+                    "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "charge.success",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Success"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "charge.failed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "85d83a02-57c5-45ef-be8b-a7f46ff2b989"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Failed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        0
+      ],
+      "id": "c0c42d6a-a387-4d01-8d46-f491942f8f51",
+      "name": "Route By Event Type"
+    },
+    {
+      "parameters": {
+        "content": "\n\n\n\n\n\n\n\n\n\n\nPhone Number is optional on **Paystack**. False path skips SMS entirely.",
+        "height": 256,
+        "width": 208,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2560,
+        80
+      ],
+      "typeVersion": 1,
+      "id": "aa6b872e-4a60-45eb-8edb-e30e737f7832",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Expected JSON Structure\n### from Paystack getCustomer API\n**Node:** Fetch Customer From Paystack\n[\n  {\n    \"status\": true,\n    \"message\": \"Customer retrieved\",\n    \"data\": {\n      \"transactions\": [],\n      \"subscriptions\": [],\n      \"authorizations\": [],\n      \"first_name\": \"Benjamin\",\n      \"last_name\": \"Nnnaemeka\",\n      \"email\": \"test@example.com\",\n      \"phone\": \"8147795152\",\n      \"metadata\": {\n        \"calling_code\": \"+234\"\n      },\n      \"domain\": \"test\",\n      \"customer_code\": \"CUS_9cznlwmaz7h3f5c\",\n      \"risk_action\": \"default\",\n      \"id\": 356892686,\n      \"integration\": 1808627,\n      \"createdAt\": \"2026-04-18T14:31:07.000Z\",\n      \"updatedAt\": \"2026-04-19T12:23:53.000Z\",\n      \"created_at\": \"2026-04-18T14:31:07.000Z\",\n      \"updated_at\": \"2026-04-19T12:23:53.000Z\",\n      \"total_transactions\": 0,\n      \"total_transaction_value\": [],\n      \"dedicated_account\": null,\n      \"dedicated_accounts\": [],\n      \"identified\": false,\n      \"identifications\": null\n    }\n  }\n]",
+        "height": 704,
+        "width": 336,
+        "color": "#501B1B"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1232,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "19e32819-3492-419a-91b9-7a8f58cf5dfa",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "paystack/charge-failed",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "9b5afe34-37d2-4b94-ac03-83ad21053784",
+      "name": "Receive Paystack Webhook",
+      "webhookId": "e614d955-413d-40b7-a0dd-a68f1bf09523"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "97ec3d34-8c10-4cfe-941a-7a70ec62f4e5",
+              "name": "customer_email",
+              "value": "={{ $('Route By Event Type').item.json.body.data.customer.email }}",
+              "type": "string"
+            },
+            {
+              "id": "28f9b9e2-d1f0-45d6-aaed-3dbac0216b09",
+              "name": "customer_code",
+              "value": "={{ $('Route By Event Type').item.json.body.data.customer.customer_code }}",
+              "type": "string"
+            },
+            {
+              "id": "38a7906f-a89a-49ea-8cb3-cea90ab0b53d",
+              "name": "amount",
+              "value": "={{ $('Route By Event Type').item.json.body.data.amount }}",
+              "type": "number"
+            },
+            {
+              "id": "6caa68f6-4710-4395-a28a-ddc7abfbd76f",
+              "name": "currency",
+              "value": "={{ $('Route By Event Type').item.json.body.data.currency }}",
+              "type": "string"
+            },
+            {
+              "id": "e17fe592-1a54-4a04-a470-be54b3d9e511",
+              "name": "display_amount",
+              "value": "={{($('Route By Event Type').item.json.body.data.amount / 100).toLocaleString('en-NG', {style: 'currency', currency: $('Route By Event Type').item.json.body.data.currency})}}",
+              "type": "string"
+            },
+            {
+              "id": "2cb43e2f-9bfa-46fa-a2ef-b1ef1a3700f7",
+              "name": "reference",
+              "value": "={{ $('Route By Event Type').item.json.body.data.reference }}",
+              "type": "string"
+            },
+            {
+              "id": "38cf3fcf-d359-49cd-84d0-28da1fff7ad5",
+              "name": "failure_reason",
+              "value": "={{ $('Route By Event Type').item.json.body.data.gateway_response }}",
+              "type": "string"
+            },
+            {
+              "id": "211f209c-12f5-4c77-bab7-dcce401ee83f",
+              "name": "event_time",
+              "value": "={{ $('Route By Event Type').item.json.body.data.created_at }}",
+              "type": "string"
+            },
+            {
+              "id": "bf2b5a85-70ec-431b-b100-910a775359ee",
+              "name": "display_event_time",
+              "value": "={{ $('Route By Event Type').item.json.body.data.created_at.toDateTime().format(\"dd-MM-yyyy, hh:mma\") }}",
+              "type": "string"
+            },
+            {
+              "id": "d26c643a-7244-4d9c-86ed-4136be64005d",
+              "name": "n8n_execution_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "7010ec3c-3fb5-46e9-878d-4ca85f5ac39c",
+              "name": "authorization_code",
+              "value": "={{ $('Route By Event Type').item.json.body.data.authorization.authorization_code }}",
+              "type": "string"
+            },
+            {
+              "id": "7d08e6f1-fc08-404d-b104-7ed6e1473361",
+              "name": "reusable",
+              "value": "={{ $('Route By Event Type').item.json.body.data.authorization.reusable }}",
+              "type": "boolean"
+            },
+            {
+              "id": "fc4edef5-d462-4d05-808c-8a4508ff4f65",
+              "name": "channel",
+              "value": "={{ $('Route By Event Type').item.json.body.data.channel }}",
+              "type": "string"
+            },
+            {
+              "id": "4d7ec98d-eace-4fa4-a536-da83ab79e998",
+              "name": "retry_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "eab47b71-d179-4cfd-b154-18f6167ff05e",
+              "name": "next_retry_at",
+              "value": "={{$('Route By Event Type').item.json.body.data.authorization?.reusable === true ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null}}",
+              "type": "string"
+            },
+            {
+              "id": "fc598cec-c539-43fc-867d-6977a6280d00",
+              "name": "business_id",
+              "value": "={{$json.business_id}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        112
+      ],
+      "id": "e5319eae-3eac-4ba3-ac3c-c364498713f0",
+      "name": "Extract Failed Payment Fields"
+    },
+    {
+      "parameters": {
+        "tableId": "payment_events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "customer_email",
+              "fieldValue": "={{ $json.customer_email }}"
+            },
+            {
+              "fieldId": "customer_code",
+              "fieldValue": "={{ $json.customer_code }}"
+            },
+            {
+              "fieldId": "amount",
+              "fieldValue": "={{ $json.amount }}"
+            },
+            {
+              "fieldId": "currency",
+              "fieldValue": "={{ $json.currency }}"
+            },
+            {
+              "fieldId": "reference",
+              "fieldValue": "={{ $json.reference }}"
+            },
+            {
+              "fieldId": "failure_reason",
+              "fieldValue": "={{ $json.failure_reason }}"
+            },
+            {
+              "fieldId": "event_time",
+              "fieldValue": "={{ $json.event_time }}"
+            },
+            {
+              "fieldId": "n8n_execution_id",
+              "fieldValue": "={{ $execution.id }}"
+            },
+            {
+              "fieldId": "authorization_code",
+              "fieldValue": "={{ $json.authorization_code }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $json.channel }}"
+            },
+            {
+              "fieldId": "retry_count",
+              "fieldValue": "={{ $json.retry_count }}"
+            },
+            {
+              "fieldId": "next_retry_at",
+              "fieldValue": "={{ $json.next_retry_at }}"
+            },
+            {
+              "fieldId": "reusable",
+              "fieldValue": "={{ $json.reusable }}"
+            },
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.business_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        960,
+        112
+      ],
+      "id": "e6a47e0a-afb7-4a90-b37c-7ae70ed955bd",
+      "name": "Store Payment Event",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "39f1c8ac-5dc2-47fb-9b40-01901275d257",
+              "name": "customer_code",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.customer_code }}",
+              "type": "string"
+            },
+            {
+              "id": "f399ed77-f8a1-46e3-a748-63006ba1b6ff",
+              "name": "paystack_secret_key",
+              "value": "={{ $('Extract Business Context').item.json.paystack_secret_key }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2208,
+        128
+      ],
+      "id": "138bd4cd-720d-4d08-915a-987711012545",
+      "name": "Prepare Recovery Context"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.paystack.co/customer/{{ $json.customer_code }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.paystack_secret_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2416,
+        128
+      ],
+      "id": "0e4195af-0be4-4f0d-998f-3e2f3f542d5c",
+      "name": "Fetch Customer From Paystack"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "71a5c232-d774-44f7-8e3c-0cd5690ccd3f",
+              "leftValue": "={{$json.data.phone}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2608,
+        128
+      ],
+      "id": "83f19848-990b-4a03-9a67-abfa0a887826",
+      "name": "Has Phone Number?"
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1040,
+        1184
+      ],
+      "id": "09d65dcc-cf70-4cb4-bf26-b89ab708b01f",
+      "name": "Wait 24 Hours",
+      "webhookId": "67ee482d-b3d1-418b-83a6-d682edd7d4cf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://v3.api.termii.com/api/sms/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"api_key\": \"{{ $('Prepare WhatsApp And Slack Context').item.json.termiii_api_key_test }}\",\n  \"to\": \"{{ $('Extract Failed Payment Fields').item.json.customer_email }}\",\n  \"from\": \"talert\",\n  \"sms\": \"Hi, your payment of {{ $('Extract Failed Payment Fields').item.json.display_amount }} failed. Please update your payment details to avoid service interruption. Ref: {{ $('Extract Failed Payment Fields').item.json.reference }}\",\n  \"channel\": \"generic\"\n  \"type\": \"plain\",\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -832,
+        1184
+      ],
+      "id": "483651a5-2cba-44bb-9cd8-f322642ff791",
+      "name": "Send SMS Via Termii"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "=#payments",
+          "mode": "id"
+        },
+        "text": "=*Payment Failed Alert*\n\n*Customer:* {{$json.customer_email}} \n*Amount:* {{$json.display_amount}}\n*Reason:*\n> {{$json.failure_reason}}\n*Reference:* {{$json.reference}}\n*Time:* {{$json.display_event_time}}\n\nRecovery sequence started automatically.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -944,
+        1344
+      ],
+      "id": "62e838c4-7c3e-49e8-9ba6-94de18581c6f",
+      "name": "Send Founder Slack Alert",
+      "webhookId": "489ac4ad-4e98-4c55-b3cc-02ecfa037304",
+      "credentials": {
+        "slackApi": {
+          "id": "vynjcs7CEnH958Po",
+          "name": "slack-test"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2864,
+        320
+      ],
+      "id": "232467c1-63f0-4175-ba65-a457ac96be17",
+      "name": "Skip SMS No Phone Number"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2cb43e2f-9bfa-46fa-a2ef-b1ef1a3700f7",
+              "name": "reference",
+              "value": "={{ $json.reference }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        1520
+      ],
+      "id": "c62ba564-240c-4bee-912c-3072e3abe07f",
+      "name": "Extract Success Payment Fields"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "payment_events",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "reference",
+              "condition": "eq",
+              "keyValue": "={{ $json.reference }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "is_resolved",
+              "fieldValue": "={{true}}"
+            },
+            {
+              "fieldId": "resolved_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "next_retry_at",
+              "fieldValue": "={{ null }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        1520
+      ],
+      "id": "de3bd09d-c9f6-46de-8685-adceac320740",
+      "name": "Mark Payment Resolved",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "execution",
+        "operation": "delete",
+        "executionId": "={{$json.n8n_execution_id}}",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        176,
+        1520
+      ],
+      "id": "dedc9ce6-3988-4027-9cfb-ad04e12e2cfd",
+      "name": "Cancel Recovery Sequence",
+      "retryOnFail": false,
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "credentials": {
+        "n8nApi": {
+          "id": "bD0WCe1QF7bB9zwB",
+          "name": "n8n-local"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "Stores `n8n_execution_id` to allow this execution to be \ncancelled if charge.success fires before sequence completes.",
+        "height": 288,
+        "width": 224,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "c3461766-e238-411f-b0a4-0d522a05ef86",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "from": "onboarding@resend.dev",
+        "to": "={{ $json.customer_email }}",
+        "subject": "Action required: Your payment failed",
+        "html": "=<!DOCTYPE html>\n<html>\n<body style=\"margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding:60px 0;\">\n  <tr><td align=\"center\">\n    <table width=\"480\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05);border:1px solid #eeeeee;\">\n      <tr><td style=\"padding:40px 40px 20px;\">\n        <div style=\"display:inline-block;padding:6px 12px;background:#fff7ed;border-radius:20px;margin-bottom:16px;\">\n          <p style=\"margin:0;font-size:12px;font-weight:600;color:#c2410c;text-transform:uppercase;letter-spacing:0.05em;\">Action Required</p>\n        </div>\n        <h1 style=\"margin:0;color:#18181b;font-size:24px;font-weight:700;line-height:1.2;\">Payment Unsuccessful</h1>\n      </td></tr>\n      <tr><td style=\"padding:0 40px 32px;\">\n        <p style=\"margin:0 0 24px;font-size:16px;color:#52525b;line-height:1.6;\">\n          Hi there, your recent payment of <strong>{{$json.display_amount}}</strong> didn't go through. This is usually just a temporary bank glitch.\n        </p>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:32px;\">\n          <tr>\n            <td style=\"padding:20px;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;\">Balance Due</p>\n              <p style=\"margin:0;font-size:28px;font-weight:700;color:#0f172a;\">{{$json.display_amount}}</p>\n            </td>\n            <td align=\"right\" style=\"padding:20px;border-left:1px solid #e2e8f0;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;\">Next Retry</p>\n              <p style=\"margin:0;font-size:14px;font-weight:600;color:#0f172a;\">In 24 Hours</p>\n            </td>\n          </tr>\n        </table>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr><td align=\"center\">\n            <table cellpadding=\"0\" cellspacing=\"0\">\n              <tr><td align=\"center\" style=\"background:#000000;border-radius:10px;\">\n                <a href=\"{{$json.billing_portal_url}}\" style=\"display:block;padding:16px 40px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;\">Update Payment Details</a>\n              </td></tr>\n            </table>\n          </td></tr>\n        </table>\n      </td></tr>\n      <tr><td style=\"padding:24px 40px;background:#f9fafb;border-top:1px solid #eeeeee;border-radius:0 0 16px 16px;\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr>\n            <td><p style=\"margin:0;font-size:12px;color:#94a3b8;\">Reference: {{$json.reference}}</p></td>\n            <td align=\"right\"><p style=\"margin:0;font-size:12px;color:#94a3b8;\">&copy; 2026</p></td>\n          </tr>\n        </table>\n      </td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>",
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-resend.resend",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        48
+      ],
+      "id": "a7556550-71af-4aa9-a9ab-2d4072103bce",
+      "name": "Send Recovery Email",
+      "webhookId": "28480b08-29be-4e3d-ae35-798d328ae596",
+      "credentials": {
+        "resendApi": {
+          "id": "k5OarWYbSbi5JbZl",
+          "name": "resend-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Expected JSON Structure\n### from Paystack Webhook\n**Node:** `Recievce Paystack Webhook`\n\n{\n  \"status\": true,\n  \"message\": \"Verification successful\",\n  \"data\": {\n    \"id\": 6055683595,\n    \"domain\": \"test\",\n    \"status\": \"success\",\n    \"reference\": \"cvnnqsa9n8\",\n    \"receipt_number\": null,\n    \"amount\": 50000000,\n    \"message\": null,\n    \"gateway_response\": \"Successful\",\n    \"paid_at\": \"2026-04-19T16:05:20.000Z\",\n    \"created_at\": \"2026-04-19T16:04:19.000Z\",\n    \"channel\": \"card\",\n    \"currency\": \"NGN\",\n    \"ip_address\": \"102.90.100.185\",\n    \"metadata\": \"\",\n    \"log\": {\n      \"start_time\": 1776614713,\n      \"time_spent\": 10,\n      \"attempts\": 1,\n      \"errors\": 0,\n      \"success\": true,\n      \"mobile\": false,\n      \"input\": [],\n      \"history\": [\n        {\n          \"type\": \"action\",\n          \"message\": \"Attempted to pay with card\",\n          \"time\": 8\n        },\n        {\n          \"type\": \"success\",\n          \"message\": \"Successfully paid with card\",\n          \"time\": 10\n        }\n      ]\n    },\n    \"fees\": 200000,\n    \"fees_split\": null,\n    \"authorization\": {\n      \"authorization_code\": \"AUTH_8ayc9rs2e9\",\n      \"bin\": \"408408\",\n      \"last4\": \"4081\",\n      \"exp_month\": \"12\",\n      \"exp_year\": \"2030\",\n      \"channel\": \"card\",\n      \"card_type\": \"visa \",\n      \"bank\": \"TEST BANK\",\n      \"country_code\": \"NG\",\n      \"brand\": \"visa\",\n      \"reusable\": true,\n      \"signature\": \"SIG_sV4NbMS92tEjhlxbVIcx\",\n      \"account_name\": null\n    },\n    \"customer\": {\n      \"id\": 356898416,\n      \"first_name\": null,\n      \"last_name\": null,\n      \"email\": \"benjamin.nnaemeka.dev@gmail.com\",\n      \"customer_code\": \"CUS_kk6h9ohykaa852p\",\n      \"phone\": null,\n      \"metadata\": null,\n      \"risk_action\": \"default\",\n      \"international_format_phone\": null\n    },\n    \"plan\": null,\n    \"split\": {},\n    \"order_id\": null,\n    \"paidAt\": \"2026-04-19T16:05:20.000Z\",\n    \"createdAt\": \"2026-04-19T16:04:19.000Z\",\n    \"requested_amount\": 50000000,\n    \"pos_transaction_data\": null,\n    \"source\": null,\n    \"fees_breakdown\": null,\n    \"connect\": null,\n    \"transaction_date\": \"2026-04-19T16:04:19.000Z\",\n    \"plan_object\": {},\n    \"subaccount\": {}\n  }\n}",
+        "height": 1728,
+        "width": 336,
+        "color": "#501B1B"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1936,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "b74bc654-912d-4e82-bafd-9c982e961132",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "71a5c232-d774-44f7-8e3c-0cd5690ccd3f",
+              "leftValue": "={{$json.channel}}",
+              "rightValue": "card",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "142e47cd-d895-4e8b-900c-a27b06841d8d",
+              "leftValue": "={{$json.authorization_code}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "fcdf4aac-4ff8-4306-a45f-4b1ea8f18adb",
+              "leftValue": "={{ $json.reusable }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1440,
+        112
+      ],
+      "id": "493f7b19-3f21-4425-9dc5-fce0e804f4e4",
+      "name": "Can Retry Payment?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.paystack.co/transaction/charge_authorization",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Extract Business Context').item.json.paystack_secret_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"authorization_code\": \"{{$json.authorization_code}}\",\n  \"email\": \"{{$json.customer_email}}\",\n  \"amount\": \"{{$json.amount}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1680,
+        -176
+      ],
+      "id": "d33dd31c-bc7c-401b-aaff-ce04de743294",
+      "name": "Retry Card Charge"
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"reference\": \"a string\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        1520
+      ],
+      "id": "8c075d7d-1fbb-4a31-975b-ab2208e2a6a4",
+      "name": "Resolve Payment Sequence"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "NVP8TSAPOP6U11b8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/NVP8TSAPOP6U11b8",
+          "cachedResultName": "Paystack-Payment-Failed-Handler"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reference": "={{ $json.reference }}"
+          },
+          "matchingColumns": [
+            "reference"
+          ],
+          "schema": [
+            {
+              "id": "reference",
+              "displayName": "reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        -208
+      ],
+      "id": "cad1acbb-352c-47a7-92ed-161099e0f47b",
+      "name": "Call 'Resolve Payment Sequence'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "NVP8TSAPOP6U11b8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/NVP8TSAPOP6U11b8",
+          "cachedResultName": "Payment Recovery Handler"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reference": "={{ $json.reference }}"
+          },
+          "matchingColumns": [
+            "reference"
+          ],
+          "schema": [
+            {
+              "id": "reference",
+              "displayName": "reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2304,
+        -176
+      ],
+      "id": "736971e4-d551-474a-b459-b32d10073db4",
+      "name": "Call 'Resolve Payment Sequence' (Retry Recovery)",
+      "notesInFlow": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "71a5c232-d774-44f7-8e3c-0cd5690ccd3f",
+              "leftValue": "={{$json.data.status}}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1888,
+        -176
+      ],
+      "id": "4137442c-736f-42c8-9a8b-8ee89729f4b4",
+      "name": "is Retry Card Charge Successful?"
+    },
+    {
+      "parameters": {
+        "content": "## Expected JSON Structure\n### Charge Authoriaztion API\n**Node:** `Retry Card Charge`\n\n[\n  {\n    \"status\": true,\n    \"message\": \"Charge attempted\",\n    \"data\": {\n      \"amount\": 50000,\n      \"currency\": \"NGN\",\n      \"transaction_date\": \"2026-04-20T01:24:34.000Z\",\n      \"status\": \"success\",\n      \"reference\": \"e51ypjwxa6xeru2\",\n      \"domain\": \"test\",\n      \"metadata\": \"\",\n      \"gateway_response\": \"Approved\",\n      \"message\": null,\n      \"channel\": \"card\",\n      \"ip_address\": null,\n      \"log\": null,\n      \"fees\": 750,\n      \"authorization\": {\n        \"authorization_code\": \"AUTH_7a3tov22q4\",\n        \"bin\": \"408408\",\n        \"last4\": \"4081\",\n        \"exp_month\": \"12\",\n        \"exp_year\": \"2030\",\n        \"channel\": \"card\",\n        \"card_type\": \"visa \",\n        \"bank\": \"TEST BANK\",\n        \"country_code\": \"NG\",\n        \"brand\": \"visa\",\n        \"reusable\": true,\n        \"signature\": \"SIG_gvH3mPiq8LJpCvheowJM\",\n        \"account_name\": null\n      },\n      \"customer\": {\n        \"id\": 357263893,\n        \"first_name\": null,\n        \"last_name\": null,\n        \"email\": \"benjamin.nnaemeka.dev@gmail.com\",\n        \"customer_code\": \"CUS_6sq1q31abxqme2x\",\n        \"phone\": null,\n        \"metadata\": null,\n        \"risk_action\": \"default\",\n        \"international_format_phone\": null\n      },\n      \"plan\": null,\n      \"id\": 6056763746\n    }\n  }\n]",
+        "height": 1088,
+        "width": 336,
+        "color": "#501B1B"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1584,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "9d3af940-b1b3-4242-897f-ad60378bf2f0",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eac3aa7c-2176-4eeb-89c3-9ef8592c5a58",
+              "name": "reference",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.reference }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2112,
+        -176
+      ],
+      "id": "5a279125-6291-488f-82ca-9f945817f21c",
+      "name": "Extract Reference"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de85fac9-1237-4c55-824f-6821a6609200",
+              "leftValue": "={{$json.body.data.source.entry_point}}",
+              "rightValue": "charge_authorization",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        32,
+        -96
+      ],
+      "id": "cd8a2486-afb4-4d8c-8f0a-e4f59cda39a8",
+      "name": "Is Retry Payment?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eac3aa7c-2176-4eeb-89c3-9ef8592c5a58",
+              "name": "reference",
+              "value": "={{ $json.body.data.reference }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -80
+      ],
+      "id": "91a8adc1-53ec-460e-871a-4318a1a786c5",
+      "name": "Extract Reference1"
+    },
+    {
+      "parameters": {
+        "content": "Deletes the charge.failed execution using `n8n_execution_id.` If this fails, customer will still receive SMS after paying.\n\n\n\n\n\n\n\n\n\n\n\nContinue on Fail enabled. Non-critical, Mark Payment Resolved already ran before this node.",
+        "height": 352,
+        "width": 272,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        128,
+        1424
+      ],
+      "typeVersion": 1,
+      "id": "4a77249c-7935-4eed-ab78-49c2e7db1097",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -304
+      ],
+      "id": "b302f7b7-ac9b-464a-901f-cffd3a7ec9f0",
+      "name": "Skip"
+    },
+    {
+      "parameters": {
+        "content": "## Search Query\n\n**Filters:**\n  - `is_resolved` == `false`\n  - `reusable` == `true`\n  - `retry_count` < `3`\n  - `next_retry_at` <= `now`\n\n\n\n\n\n\n\n\n\n\n\n",
+        "height": 368,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -272,
+        768
+      ],
+      "typeVersion": 1,
+      "id": "7d1d9eb4-b189-46b7-a321-70f28d6929fd",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "businesses",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.query.token }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        32,
+        112
+      ],
+      "id": "1c27ac0a-846a-4b4f-9377-1aef01131872",
+      "name": "Fetch Business By Webhook Token",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9bc5d97b-8839-40da-ab79-9f0376aceb2f",
+              "name": "business_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "11ffde55-3b45-4a2a-8438-0adab33cd20c",
+              "name": "paystack_secret_key",
+              "value": "={{ $json.paystack_secret_key }}",
+              "type": "string"
+            },
+            {
+              "id": "451dc956-360c-4780-9f9d-6808e3b12519",
+              "name": "whatsapp_phone_id",
+              "value": "={{ $json.whatsapp_phone_id }}",
+              "type": "string"
+            },
+            {
+              "id": "532a4d85-e176-4913-ab3b-f67817608a75",
+              "name": "whatsapp_access_token",
+              "value": "={{ $json.whatsapp_access_token }}",
+              "type": "string"
+            },
+            {
+              "id": "2afeaf56-0b33-454b-bfca-ff2e040449aa",
+              "name": "slack_webhook_url",
+              "value": "={{ $json.slack_webhook_url }}",
+              "type": "string"
+            },
+            {
+              "id": "6ab3863a-81d4-47bb-9924-49441a2997e3",
+              "name": "webhook_token",
+              "value": "={{ $('Receive Paystack Webhook').item.json.query.token }}",
+              "type": "string"
+            },
+            {
+              "id": "9db3e21f-d735-4c8f-9e89-f8b8aa22c273",
+              "name": "billing_portal_url",
+              "value": "={{ $json.billing_portal_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        112
+      ],
+      "id": "52d21817-e0b4-47e8-bf21-3c32e4b4476a",
+      "name": "Extract Business Context"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        32,
+        944
+      ],
+      "id": "1e7fcdac-532d-4ef0-a640-70a24170137b",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "payment_events",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "is_resolved",
+              "condition": "is",
+              "keyValue": "=false"
+            },
+            {
+              "keyName": "=retry_count",
+              "condition": "lt",
+              "keyValue": "=3"
+            },
+            {
+              "keyName": "next_retry_at",
+              "condition": "lte",
+              "keyValue": "={{ $now }}"
+            },
+            {
+              "keyName": "reusable",
+              "condition": "is",
+              "keyValue": "=true"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        944
+      ],
+      "id": "621549a6-f833-4d52-94ec-effb9b281d98",
+      "name": "Get Pending Card Charge Jobs",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "businesses",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{$json.business_id}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        304,
+        960
+      ],
+      "id": "c9e1e980-5665-41f6-868a-186714e14a71",
+      "name": "Fetch Business For Retry",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9bc5d97b-8839-40da-ab79-9f0376aceb2f",
+              "name": "business_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "11ffde55-3b45-4a2a-8438-0adab33cd20c",
+              "name": "paystack_secret_key",
+              "value": "={{ $json.paystack_secret_key }}",
+              "type": "string"
+            },
+            {
+              "id": "451dc956-360c-4780-9f9d-6808e3b12519",
+              "name": "whatsapp_phone_id",
+              "value": "={{ $json.whatsapp_phone_id }}",
+              "type": "string"
+            },
+            {
+              "id": "532a4d85-e176-4913-ab3b-f67817608a75",
+              "name": "whatsapp_access_token",
+              "value": "={{ $json.whatsapp_access_token }}",
+              "type": "string"
+            },
+            {
+              "id": "2afeaf56-0b33-454b-bfca-ff2e040449aa",
+              "name": "slack_webhook_url",
+              "value": "={{ $json.slack_webhook_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        960
+      ],
+      "id": "882ea52a-0005-426a-b867-8d0a44fa9e7f",
+      "name": "Extract Business Context For Retry"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "payment_events",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "reference",
+              "condition": "eq",
+              "keyValue": "={{$json.reference}}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "retry_count",
+              "fieldValue": "={{$json.retry_count + 1}}"
+            },
+            {
+              "fieldId": "next_retry_at",
+              "fieldValue": "={{new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        960
+      ],
+      "id": "907f58f3-2f44-40fa-8e56-89bb1286ba97",
+      "name": "Update Next Retry",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "NVP8TSAPOP6U11b8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/NVP8TSAPOP6U11b8",
+          "cachedResultName": "Paystack-Payment-Failed-Handler"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reference": "={{ $('Merge Business And Payment Context').item.json.reference }}"
+          },
+          "matchingColumns": [
+            "reference"
+          ],
+          "schema": [
+            {
+              "id": "reference",
+              "displayName": "reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1456,
+        768
+      ],
+      "id": "4383ac7f-9299-4615-bb7d-ee0767e6b377",
+      "name": "Call 'Resolve Payment Sequence' (Retry Recovery)1",
+      "notesInFlow": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "71a5c232-d774-44f7-8e3c-0cd5690ccd3f",
+              "leftValue": "={{$json.data.status}}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1184,
+        944
+      ],
+      "id": "99d4bb57-8d82-4293-af22-1177a5dfa798",
+      "name": "is Retry Card Charge Job Successful?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2656,
+        768
+      ],
+      "id": "c199d85d-9681-4c13-ae58-79994db914f6",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2ad57726-af95-4183-951e-19e5f0762825",
+              "name": "authorization_code",
+              "value": "={{ $json.authorization_code }}",
+              "type": "string"
+            },
+            {
+              "id": "3f5bc20c-1a7a-41cb-a5b1-a973846e8b34",
+              "name": "customer_email",
+              "value": "={{ $json.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "75d2402d-bcff-420a-8fa9-a076d76ec1a0",
+              "name": "amount",
+              "value": "={{ $json.amount }}",
+              "type": "number"
+            },
+            {
+              "id": "a617c8e4-9f6a-44b1-96ef-9f93e4430388",
+              "name": "reference",
+              "value": "={{ $json.reference }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        784
+      ],
+      "id": "04bd526d-8e6b-42fb-8057-9627334ea76b",
+      "name": "Extract Failed Payment Context"
+    },
+    {
+      "parameters": {
+        "mode": "combineBySql",
+        "query": "SELECT * FROM input1, input2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        736,
+        944
+      ],
+      "id": "9d62a749-948b-4754-b573-309c417887d1",
+      "name": "Merge Business And Payment Context"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        944
+      ],
+      "id": "3c839bff-b5e9-4645-b30b-29bd0d54f974",
+      "name": "Schedule Retry Card Charge Job"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.paystack.co/transaction/charge_authorization",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.paystack_secret_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"authorization_code\": \"{{$json.authorization_code}}\",\n  \"email\": \"{{$json.customer_email}}\",\n  \"amount\": \"{{$json.amount}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        960,
+        944
+      ],
+      "id": "e28b7512-7f48-42c9-9951-c6c6b0d9b661",
+      "name": "Retry Card Charge Job",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.paystack.co/transaction/initialize",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Extract Business Context').item.json.paystack_secret_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{$json.customer_email}}\",\n  \"amount\": \"{{$json.amount}}\",\n  \"reference\": \"{{$json.reference}}_retry\",\n  \"callback_url\": \"http://127.0.0.1:5500/dashboard.html\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1488,
+        1184
+      ],
+      "id": "5324b64f-0a9a-48c9-9955-230582b4fee9",
+      "name": "Generate Payment Link",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 416,
+        "width": 464
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1552,
+        1104
+      ],
+      "typeVersion": 1,
+      "id": "e67de080-27eb-429f-ab70-477b71d11bb4",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "payment_events",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "reference",
+              "condition": "eq",
+              "keyValue": "={{$('Extract Failed Payment Fields').item.json.reference}}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "payment_link",
+              "fieldValue": "={{$json.data.authorization_url}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        1184
+      ],
+      "id": "e2f91396-fb2b-4539-b690-01324985f13f",
+      "name": "Store Payment Link",
+      "credentials": {
+        "supabaseApi": {
+          "id": "TFeIad5e7ybTrH79",
+          "name": "supabase-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 416,
+        "width": 464,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1088,
+        1104
+      ],
+      "typeVersion": 1,
+      "id": "35f5ed37-20df-4936-84e2-624259dcb276",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "97ec3d34-8c10-4cfe-941a-7a70ec62f4e5",
+              "name": "customer_email",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "e17fe592-1a54-4a04-a470-be54b3d9e511",
+              "name": "display_amount",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.display_amount }}",
+              "type": "string"
+            },
+            {
+              "id": "2cb43e2f-9bfa-46fa-a2ef-b1ef1a3700f7",
+              "name": "reference",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.reference }}",
+              "type": "string"
+            },
+            {
+              "id": "38cf3fcf-d359-49cd-84d0-28da1fff7ad5",
+              "name": "failure_reason",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.failure_reason }}",
+              "type": "string"
+            },
+            {
+              "id": "677e18fc-a03b-4a23-bfa0-df90db40cba8",
+              "name": "customer_phone",
+              "value": "={{ $json.data.metadata.calling_code.replace(\"+\", \"\") }}{{$json.data.phone}}",
+              "type": "string"
+            },
+            {
+              "id": "c7d08866-2403-43c8-8310-7eeb483ed38a",
+              "name": "customer_first_name",
+              "value": "={{ $json.data.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "f383cd72-df14-4f85-aa16-2bce80c49ac9",
+              "name": "display_event_time",
+              "value": "={{ $('Extract Failed Payment Fields').item.json.display_event_time }}",
+              "type": "string"
+            },
+            {
+              "id": "f02565b5-faa9-4ad5-b661-16550b928b29",
+              "name": "whatsapp_phone_id",
+              "value": "={{ $('Extract Business Context').item.json.whatsapp_phone_id }}",
+              "type": "string"
+            },
+            {
+              "id": "03739495-25e6-47e2-b926-e1e63c1f49f7",
+              "name": "whatsapp_access_token",
+              "value": "={{ $('Extract Business Context').item.json.whatsapp_access_token }}",
+              "type": "string"
+            },
+            {
+              "id": "46bde95b-07b5-47d6-be6a-554805705ac1",
+              "name": "billing_portal_url",
+              "value": "={{ $('Extract Business Context').item.json.billing_portal_url }}",
+              "type": "string"
+            },
+            {
+              "id": "f5e48548-1e4f-4830-bff7-e99967ef5e41",
+              "name": "slack_webhook_url",
+              "value": "={{ $('Extract Business Context').item.json.slack_webhook_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2864,
+        112
+      ],
+      "id": "584016fc-8096-40ec-afe2-16e5dd17438f",
+      "name": "Prepare WhatsApp And Slack Context"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "635cc9da-39c8-409a-aabe-66c256f0c208",
+              "name": "email_subject",
+              "value": "={{$json.retry_count === 1 ? \"Still having trouble processing your payment\" : \"We've done everything we can\"}}",
+              "type": "string"
+            },
+            {
+              "id": "18c06ae8-6b60-4bb8-b919-d0e4ad257653",
+              "name": "email_template",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1664,
+        960
+      ],
+      "id": "445e4643-dbf5-4012-814c-ff125a4bec0a",
+      "name": "Map Email Templates And Context"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "71a5c232-d774-44f7-8e3c-0cd5690ccd3f",
+              "leftValue": "={{$json.retry_count}}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1872,
+        960
+      ],
+      "id": "7d3c3424-e83c-4b05-9174-d78bd249adaf",
+      "name": "is Second Retry?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3664,
+        16
+      ],
+      "id": "df1ad2a7-2fa2-4ca9-ad47-8fef96ca905e",
+      "name": "Done Scheduler Continues The Job"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2368,
+        944
+      ],
+      "id": "4dc125b8-95fe-4e5d-ba21-5188dd292e7a",
+      "name": "Process Other Job In Queue"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        1072
+      ],
+      "id": "e92ab939-79c4-4db5-bc0d-2884ce18f095",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "from": "onboarding@resend.dev",
+        "to": "={{ $json.customer_email }}",
+        "subject": "Still having trouble processing your payment",
+        "html": "=<!DOCTYPE html>\n<html>\n<body style=\"margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding:60px 0;\">\n  <tr><td align=\"center\">\n    <table width=\"480\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05);border:1px solid #eeeeee;\">\n      <tr><td style=\"padding:40px 40px 20px;\">\n        <div style=\"display:inline-block;padding:6px 12px;background:#fff7ed;border-radius:20px;margin-bottom:16px;\">\n          <p style=\"margin:0;font-size:12px;font-weight:600;color:#c2410c;text-transform:uppercase;letter-spacing:0.05em;\">Attempt 2 of 3</p>\n        </div>\n        <h1 style=\"margin:0;color:#18181b;font-size:24px;font-weight:700;line-height:1.2;\">Still Having Trouble</h1>\n      </td></tr>\n      <tr><td style=\"padding:0 40px 32px;\">\n        <p style=\"margin:0 0 24px;font-size:16px;color:#52525b;line-height:1.6;\">\n          Hi there, we tried your payment of <strong>{{$json.display_amount}}</strong> again today — still unsuccessful. One more automatic attempt is scheduled.\n        </p>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:32px;\">\n          <tr>\n            <td style=\"padding:20px;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;\">Balance Due</p>\n              <p style=\"margin:0;font-size:28px;font-weight:700;color:#0f172a;\">{{$json.display_amount}}</p>\n            </td>\n            <td align=\"right\" style=\"padding:20px;border-left:1px solid #e2e8f0;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;\">Next Retry</p>\n              <p style=\"margin:0;font-size:14px;font-weight:600;color:#0f172a;\">In 48 Hours</p>\n            </td>\n          </tr>\n        </table>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr><td align=\"center\" style=\"background:#000000;border-radius:10px;\">\n            <a href=\"{{$json.payment_link}}\" style=\"display:block;padding:16px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;\">Update Payment Details</a>\n          </td></tr>\n        </table>\n      </td></tr>\n      <tr><td style=\"padding:24px 40px;background:#f9fafb;border-top:1px solid #eeeeee;border-radius:0 0 16px 16px;\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr>\n            <td><p style=\"margin:0;font-size:12px;color:#94a3b8;\">Reference: {{$json.reference}}</p></td>\n            <td align=\"right\"><p style=\"margin:0;font-size:12px;color:#94a3b8;\">&copy; 2026</p></td>\n          </tr>\n        </table>\n      </td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>",
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-resend.resend",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        848
+      ],
+      "id": "b0d346b0-bef9-4675-9f88-e289f746b577",
+      "name": "Send Second Recovery Email",
+      "webhookId": "28480b08-29be-4e3d-ae35-798d328ae596",
+      "credentials": {
+        "resendApi": {
+          "id": "k5OarWYbSbi5JbZl",
+          "name": "resend-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "onboarding@resend.dev",
+        "to": "={{ $json.customer_email }}",
+        "subject": "We've done everything we can",
+        "html": "=<!DOCTYPE html>\n<html>\n<body style=\"margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding:60px 0;\">\n  <tr><td align=\"center\">\n    <table width=\"480\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05);border:1px solid #eeeeee;\">\n      <tr><td style=\"padding:40px 40px 20px;\">\n        <div style=\"display:inline-block;padding:6px 12px;background:#fef2f2;border-radius:20px;margin-bottom:16px;\">\n          <p style=\"margin:0;font-size:12px;font-weight:600;color:#dc2626;text-transform:uppercase;letter-spacing:0.05em;\">Final Notice</p>\n        </div>\n        <h1 style=\"margin:0;color:#18181b;font-size:24px;font-weight:700;line-height:1.2;\">We've Done Everything We Can</h1>\n      </td></tr>\n      <tr><td style=\"padding:0 40px 32px;\">\n        <p style=\"margin:0 0 24px;font-size:16px;color:#52525b;line-height:1.6;\">\n          Hi there, we made 3 attempts to recover your payment of <strong>{{$json.display_amount}}</strong> over the past 3 days. All were unsuccessful. Your access may be interrupted soon.\n        </p>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:32px;\">\n          <tr>\n            <td style=\"padding:20px;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;\">Balance Due</p>\n              <p style=\"margin:0;font-size:28px;font-weight:700;color:#0f172a;\">{{$json.display_amount}}</p>\n            </td>\n            <td align=\"right\" style=\"padding:20px;border-left:1px solid #e2e8f0;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;\">Retries</p>\n              <p style=\"margin:0;font-size:14px;font-weight:600;color:#dc2626;\">Exhausted</p>\n            </td>\n          </tr>\n        </table>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr><td align=\"center\" style=\"background:#000000;border-radius:10px;\">\n            <a href=\"{{$json.payment_link}}\" style=\"display:block;padding:16px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;\">Update Payment Details</a>\n          </td></tr>\n        </table>\n        <p style=\"margin:20px 0 0;text-align:center;font-size:14px;color:#71717a;\">\n          If you need help, just reply to this email.\n        </p>\n      </td></tr>\n      <tr><td style=\"padding:24px 40px;background:#f9fafb;border-top:1px solid #eeeeee;border-radius:0 0 16px 16px;\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr>\n            <td><p style=\"margin:0;font-size:12px;color:#94a3b8;\">Reference: {{$json.reference}}</p></td>\n            <td align=\"right\"><p style=\"margin:0;font-size:12px;color:#94a3b8;\">&copy; 2026</p></td>\n          </tr>\n        </table>\n      </td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>",
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-resend.resend",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        1056
+      ],
+      "id": "e050f6c6-0a0c-4428-9bcb-30d0aad481da",
+      "name": "Send Third Recovery Email",
+      "webhookId": "28480b08-29be-4e3d-ae35-798d328ae596",
+      "credentials": {
+        "resendApi": {
+          "id": "k5OarWYbSbi5JbZl",
+          "name": "resend-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "848e51e9-8882-4ae1-b3c5-c01bfcd35461",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        272
+      ],
+      "id": "87bce3b8-6887-4f7b-b6d9-413d549e67d6",
+      "name": "Is Business Valid?"
+    },
+    {
+      "parameters": {
+        "content": "## Handle No Business Found\nif the `token` doesn't match any business the node returns empty and every downstream node crashes with undefined errors.",
+        "height": 336,
+        "width": 256,
+        "color": "#301212"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        192,
+        80
+      ],
+      "typeVersion": 1,
+      "id": "9ae88744-35f3-4cb0-8a8b-a85046e78981",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "62c797c7-d458-43dd-af56-6d6d13a26dbf",
+              "name": "error_message",
+              "value": "=Webhook rejected: no business found for token {{$('Receive Paystack Webhook').item.json.query.token}}. Verify the webhook URL is correctly configured in your Paystack dashboard.",
+              "type": "string"
+            },
+            {
+              "id": "906af53f-1455-4fa3-9c2b-02a71fcd4a80",
+              "name": "failed_webhook_token",
+              "value": "={{$('Receive Paystack Webhook').item.json.query.token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        336
+      ],
+      "id": "866ac0f9-fb9f-4d04-b9f1-8276cd4eec49",
+      "name": "Prepare Error Message"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a814f685-92ae-4da1-b1e3-f5acba3466e0",
+              "leftValue": "={{ $('Extract Business Context').item.json.billing_portal_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1680,
+        128
+      ],
+      "id": "73aafc63-c2b2-455b-a2e4-b61fc1cc302b",
+      "name": "Is Billing Portal Url Available?"
+    },
+    {
+      "parameters": {
+        "from": "onboarding@resend.dev",
+        "to": "={{ $json.customer_email }}",
+        "subject": "Action required: Your payment failed",
+        "html": "=<!DOCTYPE html>\n<html>\n<body style=\"margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding:60px 0;\">\n  <tr><td align=\"center\">\n    <table width=\"480\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05);border:1px solid #eeeeee;\">\n      <tr><td style=\"padding:40px 40px 20px;\">\n        <div style=\"display:inline-block;padding:6px 12px;background:#fff7ed;border-radius:20px;margin-bottom:16px;\">\n          <p style=\"margin:0;font-size:12px;font-weight:600;color:#c2410c;text-transform:uppercase;letter-spacing:0.05em;\">Action Required</p>\n        </div>\n        <h1 style=\"margin:0;color:#18181b;font-size:24px;font-weight:700;line-height:1.2;\">Payment Unsuccessful</h1>\n      </td></tr>\n      <tr><td style=\"padding:0 40px 32px;\">\n        <p style=\"margin:0 0 24px;font-size:16px;color:#52525b;line-height:1.6;\">\n          Hi there, your recent payment of <strong>{{$json.display_amount}}</strong> didn't go through. This is usually just a temporary bank glitch.\n        </p>\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:32px;\">\n          <tr>\n            <td style=\"padding:20px;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;\">Balance Due</p>\n              <p style=\"margin:0;font-size:28px;font-weight:700;color:#0f172a;\">{{$json.display_amount}}</p>\n            </td>\n            <td align=\"right\" style=\"padding:20px;border-left:1px solid #e2e8f0;\">\n              <p style=\"margin:0 0 4px;font-size:12px;color:#64748b;text-transform:uppercase;\">Next Retry</p>\n              <p style=\"margin:0;font-size:14px;font-weight:600;color:#0f172a;\">In 24 Hours</p>\n            </td>\n          </tr>\n        </table>\n        <p style=\"margin:0;font-size:15px;color:#52525b;line-height:1.6;text-align:center;\">\n          Our team has been notified and will be in touch shortly to help resolve this.\n        </p>\n      </td></tr>\n      <tr><td style=\"padding:24px 40px;background:#f9fafb;border-top:1px solid #eeeeee;border-radius:0 0 16px 16px;\">\n        <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">\n          <tr>\n            <td><p style=\"margin:0;font-size:12px;color:#94a3b8;\">Reference: {{$json.reference}}</p></td>\n            <td align=\"right\"><p style=\"margin:0;font-size:12px;color:#94a3b8;\">&copy; 2026</p></td>\n          </tr>\n        </table>\n      </td></tr>\n    </table>\n  </td></tr>\n</table>\n</body>\n</html>",
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-resend.resend",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        224
+      ],
+      "id": "be8a91e8-2437-4664-bd1b-1f16168cebe2",
+      "name": "Send Recovery Email  Without Deep Link",
+      "webhookId": "28480b08-29be-4e3d-ae35-798d328ae596",
+      "credentials": {
+        "resendApi": {
+          "id": "k5OarWYbSbi5JbZl",
+          "name": "resend-test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "62c797c7-d458-43dd-af56-6d6d13a26dbf",
+              "name": "error_message",
+              "value": "=Payment event storage failed for reference {{$('Extract Failed Payment Fields').item.json.reference}}.",
+              "type": "string"
+            },
+            {
+              "id": "906af53f-1455-4fa3-9c2b-02a71fcd4a80",
+              "name": "failed_webhook_token",
+              "value": "={{$('Receive Paystack Webhook').item.json.query.token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        304
+      ],
+      "id": "b58a5e88-9899-416c-8347-f973cd27683d",
+      "name": "Prepare Error Message1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "848e51e9-8882-4ae1-b3c5-c01bfcd35461",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        224
+      ],
+      "id": "c4cf6a63-cd98-44f5-8b8a-5f2013bfadf5",
+      "name": "Is Payment Details Stored?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{$json.error_message}}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        720,
+        336
+      ],
+      "id": "1cf13715-7e9f-4453-9c0b-cab6b5dd961e",
+      "name": "Throw No Business Found Error"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=1086116021248633",
+        "recipientPhoneNumber": "={{ $json.customer_phone }}",
+        "textBody": "=Hi, your payment of *{{$json.display_amount}}* failed. Please update your payment details here:\n\n{{$json.payment_link}}",
+        "additionalFields": {
+          "previewUrl": true
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -1392,
+        1344
+      ],
+      "id": "804cb8ec-015f-4d1b-a4d5-1c44e6ddd623",
+      "name": "Send WhatsApp Message.",
+      "webhookId": "6167685f-ad19-4723-8dd6-214cb7a1976c",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "TEUzWkbNja5UujB8",
+          "name": "WhatsApp Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v25.0/{{ $json.whatsapp_phone_id }}/messages",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"Authorization\": \"Bearer {{ $json.whatsapp_access_token }}\",\n  \"Content-Type\": \"application/json\" \n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customer_phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi *{{$json.customer_first_name}}*, \\n\\nYour payment of *{{$json.display_amount}}* failed. \\n\\nPlease update your payment details here: {{$json.billing_portal_url}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3344,
+        -160
+      ],
+      "id": "3fbf1b0a-1b6c-44fd-be53-e738763aa3a8",
+      "name": "Send WhatsApp Message",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "HTTP Request used here because each business has its own `whatsapp_phone_id` and `whatsapp_access_token` (stored in Supabase).\nNative WhatsApp node only supports static credentials.",
+        "height": 512,
+        "color": "#1B0D35"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3280,
+        -320
+      ],
+      "typeVersion": 1,
+      "id": "ec46edcc-0298-4b97-ac15-ebf870d78396",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        400,
+        624
+      ],
+      "id": "e1173e5f-2b84-44e7-942e-1ce6df15f7ee",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v25.0/{{ $json.whatsapp_phone_id }}/messages",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"Authorization\": \"Bearer {{ $json.whatsapp_access_token }}\",\n  \"Content-Type\": \"application/json\" \n}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customer_phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi *{{$json.customer_first_name}}*, \\n\\nYour payment of *{{$json.display_amount}}* failed. \\n\\nPlease contact us so we can help resolve this quickly.\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3344,
+        16
+      ],
+      "id": "af3e56f1-d0a8-4712-a03f-2b7e4bd9f2f3",
+      "name": "Send WhatsApp Message Without DeepLink",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Prepare WhatsApp And Slack Context').item.json.slack_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"*Payment Failed Alert*\\n\\n*Customer:* {{ $json.customer_email }}\\n*Amount:* {{ $json.display_amount }}\\n*Reason:*\\n> {{ $json.failure_reason }}\\n*Reference:* {{ $json.reference }}\\n*Time:* {{ $json.display_event_time }}\\n\\nRecovery sequence started automatically.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3344,
+        240
+      ],
+      "id": "5bcda3ae-14b6-464f-9747-6944d9ae82fd",
+      "name": "Send Slack Founder Slack Alert",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d51d8a72-7457-4aba-9c44-aa12fcdaba3d",
+              "leftValue": "={{ $json.billing_portal_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3088,
+        0
+      ],
+      "id": "744973b8-77e7-48b6-8102-0a4ba3b30890",
+      "name": "Deep Link Available?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d51d8a72-7457-4aba-9c44-aa12fcdaba3d",
+              "leftValue": "={{ $json.slack_webhook_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "b3c32b01-b022-450a-9f25-c3be4adc8b77",
+              "leftValue": "={{ $json.slack_webhook_url }}",
+              "rightValue": "^https:\\/\\/hooks\\.slack\\.com\\/services\\/[A-Z0-9]+\\/[A-Z0-9]+\\/[A-Za-z0-9]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3104,
+        256
+      ],
+      "id": "21aed9d6-632e-4c24-98f8-c4464a9f8ba5",
+      "name": "Slack Webhook Available?"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{$json.error_message}}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        384
+      ],
+      "id": "27be8fce-2cef-4771-a98c-4e3eed3542e9",
+      "name": "Throw Event Storage Error"
+    },
+    {
+      "parameters": {
+        "content": "## Made by:\n---\n# Benjamin Chisom Nnaemeka\n### </> Android Engineer | AI & Automation Engineer\n---\n\n\n👨🏻‍💻 Currently Building the community where AI automation practitioners build their reputation, share their work, and get paid for it.\n\n---\n\n\n### Follow me to see what I build next.\n\n╰┈➤ [Send me an Email](malito:benjamin.nnaemeka.dev@gmail.com)\n╰┈➤ [Follow me on GitHub](https://github.com/benjamin-nnaemeka-dev)\n╰┈➤ [Follow me on Threads](https://www.threads.com/@benjamin.nnaemeka.dev/)\n╰┈➤ [Connect with me on Linkedin](https://www.linkedin.com/in/benjamin.nnaemeka.dev/)",
+        "height": 344,
+        "width": 520,
+        "color": 5
+      },
+      "id": "934c44b8-055a-4557-b871-fec5ce92aea2",
+      "name": "Sticky Note11",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1200,
+        736
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Route By Event Type": {
+      "main": [
+        [
+          {
+            "node": "Is Retry Payment?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Business By Webhook Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive Paystack Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route By Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Failed Payment Fields": {
+      "main": [
+        [
+          {
+            "node": "Store Payment Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Payment Event": {
+      "main": [
+        [
+          {
+            "node": "Is Payment Details Stored?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Recovery Context": {
+      "main": [
+        [
+          {
+            "node": "Fetch Customer From Paystack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Customer From Paystack": {
+      "main": [
+        [
+          {
+            "node": "Has Phone Number?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Phone Number?": {
+      "main": [
+        [
+          {
+            "node": "Prepare WhatsApp And Slack Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip SMS No Phone Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 24 Hours": {
+      "main": [
+        []
+      ]
+    },
+    "Send Founder Slack Alert": {
+      "main": [
+        []
+      ]
+    },
+    "Extract Success Payment Fields": {
+      "main": [
+        [
+          {
+            "node": "Mark Payment Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Payment Resolved": {
+      "main": [
+        [
+          {
+            "node": "Cancel Recovery Sequence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Recovery Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Recovery Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Retry Payment?": {
+      "main": [
+        [
+          {
+            "node": "Retry Card Charge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Billing Portal Url Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Card Charge": {
+      "main": [
+        [
+          {
+            "node": "is Retry Card Charge Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Payment Sequence": {
+      "main": [
+        [
+          {
+            "node": "Extract Success Payment Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is Retry Card Charge Successful?": {
+      "main": [
+        [
+          {
+            "node": "Extract Reference",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Call 'Resolve Payment Sequence' (Retry Recovery)": {
+      "main": [
+        []
+      ]
+    },
+    "Extract Reference": {
+      "main": [
+        [
+          {
+            "node": "Call 'Resolve Payment Sequence' (Retry Recovery)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Retry Payment?": {
+      "main": [
+        [
+          {
+            "node": "Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Reference1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Reference1": {
+      "main": [
+        [
+          {
+            "node": "Call 'Resolve Payment Sequence'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip": {
+      "main": [
+        []
+      ]
+    },
+    "Fetch Business By Webhook Token": {
+      "main": [
+        [
+          {
+            "node": "Is Business Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Business Context": {
+      "main": [
+        [
+          {
+            "node": "Extract Failed Payment Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Business For Retry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract Failed Payment Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Card Charge Jobs": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Business For Retry": {
+      "main": [
+        [
+          {
+            "node": "Extract Business Context For Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Business Context For Retry": {
+      "main": [
+        [
+          {
+            "node": "Merge Business And Payment Context",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Update Next Retry": {
+      "main": [
+        [
+          {
+            "node": "Map Email Templates And Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is Retry Card Charge Job Successful?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Resolve Payment Sequence' (Retry Recovery)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Next Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Resolve Payment Sequence' (Retry Recovery)1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Failed Payment Context": {
+      "main": [
+        [
+          {
+            "node": "Merge Business And Payment Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Business And Payment Context": {
+      "main": [
+        [
+          {
+            "node": "Retry Card Charge Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Retry Card Charge Job": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Card Charge Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry Card Charge Job": {
+      "main": [
+        [
+          {
+            "node": "is Retry Card Charge Job Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Payment Link": {
+      "main": [
+        []
+      ]
+    },
+    "Store Payment Link": {
+      "main": [
+        []
+      ]
+    },
+    "Prepare WhatsApp And Slack Context": {
+      "main": [
+        [
+          {
+            "node": "Deep Link Available?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack Webhook Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Email Templates And Context": {
+      "main": [
+        [
+          {
+            "node": "is Second Retry?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is Second Retry?": {
+      "main": [
+        [
+          {
+            "node": "Send Second Recovery Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Third Recovery Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Second Recovery Email": {
+      "main": [
+        [
+          {
+            "node": "Process Other Job In Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Third Recovery Email": {
+      "main": [
+        [
+          {
+            "node": "Process Other Job In Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Business Valid?": {
+      "main": [
+        [
+          {
+            "node": "Extract Business Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error Message": {
+      "main": [
+        [
+          {
+            "node": "Throw No Business Found Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Billing Portal Url Available?": {
+      "main": [
+        [
+          {
+            "node": "Send Recovery Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Recovery Email  Without Deep Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Recovery Email  Without Deep Link": {
+      "main": [
+        [
+          {
+            "node": "Prepare Recovery Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error Message1": {
+      "main": [
+        [
+          {
+            "node": "Throw Event Storage Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Payment Details Stored?": {
+      "main": [
+        [
+          {
+            "node": "Can Retry Payment?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Error Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Message.": {
+      "main": [
+        []
+      ]
+    },
+    "Send WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Done Scheduler Continues The Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Message Without DeepLink": {
+      "main": [
+        [
+          {
+            "node": "Done Scheduler Continues The Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Founder Slack Alert": {
+      "main": [
+        [
+          {
+            "node": "Done Scheduler Continues The Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deep Link Available?": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send WhatsApp Message Without DeepLink",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Webhook Available?": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Founder Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "2vaUUedoFj1umwij",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "06f5de33-d20f-45f2-a866-4214529c08d7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6bfe217acf6d5cec26a86700aec1cfa6f5ef5346058d541d80b74d45c506bbdd"
+  },
+  "id": "NVP8TSAPOP6U11b8",
+  "tags": []
+}
