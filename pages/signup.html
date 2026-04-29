@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus — Sign Up</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="auth-body">
+    <div class="card">
+        <h1>Create your account</h1>
+        <p class="subtitle">Start recovering failed payments automatically.</p>
+
+        <div class="alert alert-error" id="error">
+            <span class="material-symbols-outlined">error</span>
+            <span id="error-text"></span>
+        </div>
+
+        <div class="field">
+            <label>Business name</label>
+            <input type="text" id="business_name" placeholder="Acme Inc." />
+        </div>
+        <div class="field">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="you@company.com" />
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Min. 8 characters" />
+        </div>
+
+        <button class="btn btn-primary btn-full" id="signup-btn">
+            Create account
+        </button>
+
+        <div class="auth-footer">
+            Already have an account? <a href="login.html">Sign in</a>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/supabase.js"></script>
+    <script>
+        async function signUp() {
+            const business_name = document.getElementById('business_name').value.trim()
+            const email = document.getElementById('email').value.trim()
+            const password = document.getElementById('password').value
+            const errorEl = document.getElementById('error')
+            const errorText = document.getElementById('error-text')
+            const btn = document.getElementById('signup-btn')
+
+            errorEl.classList.remove('show')
+
+            if (!business_name || !email || !password) {
+                errorText.textContent = 'Please fill in all fields.'
+                errorEl.classList.add('show')
+                return
+            }
+
+            btn.disabled = true
+            btn.textContent = 'Creating account...'
+
+            const { data, error } = await supabaseClient.auth.signUp({ email, password })
+
+            if (error) {
+                const friendlyErrors = {
+                    'User already registered': 'An account with this email already exists.',
+                    'Password should be at least 6 characters': 'Password must be at least 6 characters.',
+                    'Unable to validate email address: invalid format': 'Please enter a valid email address.'
+                }
+                errorText.textContent = friendlyErrors[error.message] || 'Something went wrong. Please try again.'
+                errorEl.classList.add('show')
+                btn.disabled = false
+                btn.textContent = 'Create account'
+                return
+            }
+
+            const { error: profileError } = await supabaseClient
+                .from('businesses')
+                .insert({ user_id: data.user.id, business_name, email })
+
+            if (profileError) {
+                // Delete the auth user to prevent orphaned accounts
+                await supabaseClient.auth.admin?.deleteUser(data.user.id)
+                await supabaseClient.auth.signOut()
+                errorText.textContent = 'Failed to create your account. Please try again.'
+                errorEl.classList.add('show')
+                btn.disabled = false
+                btn.textContent = 'Create account'
+                return
+            }
+
+            window.location.href = 'onboarding.html'
+        }
+
+        document.getElementById('signup-btn').addEventListener('click', signUp)
+    </script>
+</body>
+
+</html>
