@@ -83,6 +83,12 @@ export default function OnboardingPage() {
     setSuccess('');
     setLoading(true);
 
+    if (!session) {
+      setError('Session expired. Please log in again.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const updates = {
         paystack_secret_key: paystackKey.trim(),
