@@ -1,58 +1,47 @@
-# Payment Recovery Handler — Workflow Documentation
+# Payment Recovery Handler - Workflow Documentation
 
 ## Overview
 
 This is the main n8n workflow. It handles two Paystack webhook events:
-- `charge.failed` — triggers the full recovery sequence
-- `charge.success` — marks the payment resolved and cancels waiting retries
+- `charge.failed` - triggers the payment recovery sequence (immediate retry or notification flow)
+- `charge.success` - marks the payment resolved and cancels active waiting retry schedules
 
-The workflow also contains the retry scheduler which runs hourly to follow up on unresolved payment events.
+The workflow also contains a retry scheduler which runs hourly to follow up on unresolved payment events.
 
 ---
 
-## Trigger
+## Webhook Trigger
 
-**Node:** `Receive Paystack Webhook`
-**Type:** Webhook
-**Method:** POST
-**Path:** `/paystack/charge-failed`
-**Full URL:** `{base_url}/webhook/paystack/charge-failed?token={business_id}`
+**Node:** `Receive Paystack Webhook`  
+**Type:** Webhook  
+**Method:** POST  
+**Path:** `/paystack/charge-failed`  
+**Full URL:** `{base_url}/webhook/paystack/charge-failed?token={business_id}`  
 
-The `token` query parameter is the business `id` from the `businesses` table. It is used to identify which business owns the incoming webhook.
+The `token` query parameter matches the business `id` in the `businesses` table. It identifies which business owns the incoming webhook.
 
 ---
 
 ## Charge Failed Flow
 
 ### 1. Route By Event Type
-**Type:** Switch
-
+**Type:** Switch  
 Routes the incoming webhook by `body.event`:
-- `charge.success` → success branch
-- `charge.failed` → failed branch
-
----
+- `charge.success` -> Success branch (routed to the Success Flow)
+- `charge.failed` -> Failed branch (routed to step 2)
 
 ### 2. Fetch Business By Webhook Token
-**Type:** Supabase
-
-Queries the `businesses` table using the `token` query parameter from the webhook URL. Fetches all business credentials needed for the recovery sequence — Paystack secret key, WhatsApp credentials, Slack webhook URL, and billing portal URL.
-
----
+**Type:** Supabase  
+Queries the `businesses` table using the `token` query parameter from the webhook URL. It fetches the business credentials needed for the recovery sequence: Paystack secret key, WhatsApp credentials, Slack webhook URL, and billing portal URL.
 
 ### 3. Is Business Valid?
-**Type:** If
-
+**Type:** If  
 Checks whether a business record was found for the token. If not found, the flow stops and throws a structured error.
-
-- `true` → Extract Business Context
-- `false` → Prepare Error Message → Throw No Business Found Error
-
----
+- `true` -> Extract Business Context
+- `false` -> Prepare Error Message -> Throw No Business Found Error
 
 ### 4. Extract Business Context
-**Type:** Set
-
+**Type:** Set  
 Maps business fields from the Supabase response into clean variables:
 - `business_id`
 - `paystack_secret_key`
@@ -61,16 +50,13 @@ Maps business fields from the Supabase response into clean variables:
 - `slack_webhook_url`
 - `billing_portal_url`
 
----
-
 ### 5. Extract Failed Payment Fields
-**Type:** Set
-
+**Type:** Set  
 Maps payment event fields from the Paystack webhook body:
 - `customer_email`
 - `customer_code`
 - `amount` (in kobo)
-- `display_amount` (formatted as NGN currency)
+- `display_amount` (formatted NGN currency)
 - `currency`
 - `reference`
 - `failure_reason` (from `gateway_response`)
@@ -84,239 +70,160 @@ Maps payment event fields from the Paystack webhook body:
 - `n8n_execution_id`
 - `business_id`
 
----
-
 ### 6. Store Payment Event
-**Type:** Supabase insert
-
-Inserts a new row into `payment_events` with all fields from the previous step. Returns the stored record including its generated `id`.
-
----
+**Type:** Supabase Insert  
+Inserts a new row into `payment_events` with the extracted payment fields. Returns the stored record including its generated `id`.
 
 ### 7. Is Payment Details Stored?
-**Type:** If
-
-Verifies the insert succeeded and the record exists. If it failed, throws a structured error.
-
-- `true` → Can Retry Payment?
-- `false` → Prepare Error Message → Throw Event Storage Error
-
----
+**Type:** If  
+Verifies that the database insert succeeded. If it failed, throws a structured error.
+- `true` -> Can Retry Payment?
+- `false` -> Prepare Error Message1 -> Throw Event Storage Error
 
 ### 8. Can Retry Payment?
-**Type:** If
+**Type:** If  
+Checks whether `reusable = true`. 
+- **`true` (Immediate Retry Flow):** Bypasses initial notifications to attempt charging the card authorization again immediately.
+  - **Retry Card Charge:** HTTP POST to `https://api.paystack.co/transaction/charge_authorization` using the business's `paystack_secret_key`.
+  - **is Retry Card Charge Successful?:** If the charge succeeds, it routes to `Extract Reference` -> `Call 'Resolve Payment Sequence'` to mark the payment resolved and terminate wait schedules. If it fails, execution stops (handled by the hourly scheduler).
+- **`false` (Notification Flow):** Routes to the customer notification sequence starting at step 9.
 
-Checks whether `reusable = true`. If the card is reusable, the scheduler will attempt to charge it again on retry. If not reusable, retries will only send follow-up emails.
+### 9. Is Billing Portal Url Available?
+**Type:** If  
+Checks whether `billing_portal_url` is configured for the business.
+- `true` -> Send Recovery Email (with "Update Payment Details" CTA button)
+- `false` -> Send Recovery Email Without Deep Link (softer message, no button)
 
----
-
-### 9. Fetch Customer From Paystack
-**Type:** HTTP Request
-
-Calls `GET https://api.paystack.co/customer/{customer_code}` using the business's `paystack_secret_key` as the Bearer token. Retrieves the customer's `first_name`, `last_name`, and `phone` number.
-
----
-
-### 10. Has Phone Number?
-**Type:** If
-
-Checks whether `data.phone` exists on the Paystack customer record. Phone is optional on Paystack so this prevents null values downstream.
-
-- `true` → Prepare Recovery Context (with phone)
-- `false` → Prepare Recovery Context (skips WhatsApp)
-
----
+### 10. Send Recovery Email / Send Recovery Email Without Deep Link
+**Type:** Resend  
+Sends the first recovery email (Email 1) to the customer email address extracted from the Paystack webhook body.
 
 ### 11. Prepare Recovery Context
-**Type:** Set
+**Type:** Set  
+Sets up the flat variables mapping business and payment fields needed for downstream customer communication.
 
-Merges business context, payment fields, and customer data into a single flat object for use in email, WhatsApp, and Slack nodes:
-- `customer_first_name`
-- `customer_phone` (formatted with calling code)
-- `display_amount`
-- `billing_portal_url`
-- `whatsapp_phone_id`
-- `whatsapp_access_token`
-- `slack_webhook_url`
+### 12. Fetch Customer From Paystack
+**Type:** HTTP Request  
+Calls `GET https://api.paystack.co/customer/{customer_code}` using the business's `paystack_secret_key` to retrieve the customer's name and phone number.
 
----
-
-### 12. Is Billing Portal URL Available?
-**Type:** If
-
-Checks whether `billing_portal_url` is set for the business.
-
-- `true` → Send Recovery Email (with CTA button)
-- `false` → Send Recovery Email Without Deep Link (softer message, no button)
+### 13. Has Phone Number?
+**Type:** If  
+Checks whether `data.phone` exists on the retrieved Paystack customer record.
+- **`true`:** Routes to `Prepare WhatsApp And Slack Context` to dispatch chat alerts:
+  - **Slack Webhook Available?:** If true, posts a slack alert to the business's Slack incoming webhook URL.
+  - **Deep Link Available?:** If true, sends a WhatsApp message with the billing portal link. If false, sends a WhatsApp message with a generic contact support prompt.
+- **`false`:** Routes to `Skip SMS No Phone Number` (No Operation) and terminates the notification flow since WhatsApp is unavailable.
 
 ---
 
-### 13. Send Recovery Email / Send Recovery Email Without Deep Link
-**Type:** Resend
+## Inactive and Draft Nodes (on Canvas)
 
-Sends Email 1 to the customer. The template differs based on whether a billing portal URL is available:
-- With URL — includes an "Update Payment Details" CTA button
-- Without URL — softer message, no button, contact prompt
+The workflow canvas contains the following additional nodes which are defined but remain disconnected or inactive in the current execution paths:
 
----
+### 1. Wait 24 Hours
+- **Type:** Wait
+- **Interval:** Pauses execution for 24 hours.
 
-### 14. Prepare WhatsApp And Slack Context
-**Type:** Set
+### 2. Send SMS Via Termii
+- **Type:** HTTP Request
+- **Method:** POST
+- **URL:** `https://v3.api.termii.com/api/sms/send`
+- **Payload:** Sends an SMS using the business's Termii API key to the customer phone number with custom retry and reference context.
 
-Prepares the WhatsApp message body and Slack alert message as strings, branching on `billing_portal_url` availability using a ternary expression. Both messages are stored as fields on the item.
-
----
-
-### 15. Deep Link Available? → WhatsApp
-**Type:** If → HTTP Request
-
-Checks billing portal URL availability again for the WhatsApp message.
-
-- `true` → Send WhatsApp Message (includes billing portal link)
-- `false` → Send WhatsApp Message Without DeepLink (contact prompt message)
-
-Both nodes POST to `https://graph.facebook.com/v18.0/{whatsapp_phone_id}/messages` using the business's `whatsapp_access_token` as the Bearer token. Credentials are injected dynamically — the native WhatsApp node is not used because it only supports static credentials.
-
----
-
-### 16. Slack Webhook Available? → Send Slack Founder Slack Alert
-**Type:** If → HTTP Request
-
-Checks whether `slack_webhook_url` is set. If yes, POSTs a formatted Slack alert to the business's incoming webhook URL containing customer email, amount, failure reason, reference, and timestamp.
-
----
-
-### 17. Done Scheduler Continues The Job
-**Type:** No Operation
-
-Passthrough node. All three notification branches (WhatsApp with link, WhatsApp without link, Slack) connect here. Marks the end of the charge failed sequence.
+### 3. Skip SMS No Phone Number
+- **Type:** No Operation
+- **Purpose:** Terminal path for when customer records contain no phone number.
 
 ---
 
 ## Charge Success Flow
 
-### 1. Extract References
-**Type:** Set
+### 1. Route By Event Type
+**Type:** Switch  
+Routes the `charge.success` webhook event from Step 1 of the webhook trigger.
 
-Extracts `reference` from the `charge.success` webhook body.
-
----
-
-### 2. Retrieve Supabase Reference
-**Type:** Supabase
-
-Queries `payment_events` by `reference` to find the matching unresolved event.
+### 2. Is Retry Payment?
+**Type:** If  
+Checks whether this successful charge was initiated by our own retry scheduler.
+- `true` -> Skip (No Operation) to avoid redundant cancellations.
+- `false` -> Extract Reference1 (extracts payment reference) -> Call 'Resolve Payment Sequence' (triggers the sequence resolution flow).
 
 ---
 
-### 3. Is Retry Card Charge Successful? / Extract Supabase Payment Fields
-Extracts the `n8n_execution_id` and `id` from the stored payment event record.
+## Resolve Payment Sequence (Sub-Workflow Trigger)
 
----
+**Node:** `Resolve Payment Sequence`  
+**Type:** Execute Workflow Trigger  
+Invoked internally when a payment is successfully completed (either via immediate retry, scheduler retry, or manual customer resolution).
 
-### 4. Mark Payment Resolved
-**Type:** Supabase update
+### 1. Extract Success Payment Fields
+**Type:** Set  
+Extracts the `reference` of the successful payment.
 
-Updates the `payment_events` row:
+### 2. Mark Payment Resolved
+**Type:** Supabase Update  
+Updates the matching `payment_events` row:
 - `is_resolved = true`
 - `resolved_at = now()`
 
----
-
-### 5. Cancel Resolve Payment Sequence
-**Type:** n8n sub-workflow call
-
-Calls the `resolve-payment-sequence` sub-workflow, passing the `n8n_execution_id`. The sub-workflow cancels any waiting retry executions for this payment so no further follow-up emails are sent.
+### 3. Cancel Recovery Sequence
+**Type:** Execute Workflow  
+Calls the sub-workflow to cancel any active waiting retry jobs in the n8n execution queue.
 
 ---
 
 ## Retry Scheduler Flow
 
 ### Trigger
-**Node:** `Schedule Retry Card Charge Job`
-**Type:** Schedule Trigger
-**Interval:** Every 1 hour
-
----
+**Node:** `Schedule Retry Card Charge Job`  
+**Type:** Schedule Trigger  
+**Interval:** Runs every 1 hour.
 
 ### 1. Get Pending Card Charge Jobs
-**Type:** Supabase
-
-Queries `payment_events` where:
+**Type:** Supabase  
+Queries `payment_events` for records where:
 - `is_resolved = false`
 - `reusable = true`
 - `retry_count < 3`
 - `next_retry_at <= now()`
 
-Returns all payment events due for a retry attempt.
-
----
-
 ### 2. Loop Over Items
-**Type:** Loop
-
-Iterates over each pending payment event one at a time.
-
----
+**Type:** Loop  
+Iterates through each pending retry payment event.
 
 ### 3. Fetch Business For Retry
-**Type:** Supabase
+**Type:** Supabase  
+Queries the `businesses` table for credentials using the `business_id` of the payment event.
 
-Fetches the business record for the current payment event using `business_id`. Retrieves Paystack secret key and email credentials needed for the retry.
-
----
-
-### 4. Extract Business Context For Retry Payment Context
-**Type:** Set
-
-Maps business credentials into clean variables for use in retry nodes.
-
----
+### 4. Extract Business Context For Retry
+**Type:** Set  
+Maps business credentials and secret keys into variables for the retry operation.
 
 ### 5. Retry Card Charge Job
-**Type:** HTTP Request
-
-Calls `POST https://api.paystack.co/transaction/charge_authorization` using the business's `paystack_secret_key`. Passes `authorization_code`, `email`, and `amount` to attempt the card charge again.
-
-**Continue on Fail: enabled** — if this node fails, the loop continues to the next item.
-
----
+**Type:** HTTP Request  
+Submits a POST request to `https://api.paystack.co/transaction/charge_authorization` to charge the customer's card again. (Has "Continue on Fail" enabled so a single failed card does not crash the loop).
 
 ### 6. Is Retry Card Charge Job Successful?
-**Type:** If
-
-Checks whether the Paystack charge response indicates success.
-
-- `true` → Get "Resolve Payment Sequence" Retry → Call "Resolve Payment Sequence" Sub-workflow → mark resolved
-- `false` → Update Next Retry → Map Email Templates And Context → send follow-up email
-
----
+**Type:** If  
+Checks whether Paystack approved the transaction:
+- **`true`:** Routes to `Extract Reference` -> `Call 'Resolve Payment Sequence'` (marks the database record resolved and cancels waiting retry items).
+- **`false`:** Routes to step 7.
 
 ### 7. Update Next Retry (on failure)
-**Type:** Supabase update
-
-Increments `retry_count` by 1 and sets `next_retry_at` to 24 hours from now.
-
----
+**Type:** Supabase Update  
+Increments `retry_count` by 1 and sets `next_retry_at` to 24 hours from the current time.
 
 ### 8. Map Email Templates And Context
-**Type:** Set
-
-Determines which follow-up email to send based on `retry_count`:
-- `retry_count = 1` → Email 2
-- `retry_count = 2` → Email 3
-
----
+**Type:** Set  
+Determines which email copy to send based on the new `retry_count`:
+- `retry_count = 1` -> Email 2
+- `retry_count = 2` -> Email 3
 
 ### 9. Is Second Retry?
-**Type:** If
-
-- `true` → Send Second Recovery Email
-- `false` → Send Third Recovery Email
-
----
+**Type:** If  
+- `true` -> Send Second Recovery Email (via Resend)
+- `false` -> Send Third Recovery Email (via Resend)
 
 ### 10. Process Other Job In Queue
-**Type:** No Operation
-
-Passthrough. Both email branches connect here, then loop back to `Loop Over Items` to process the next pending job.
+**Type:** No Operation  
+Ends current item iteration and loops back to loop through the next pending job.

@@ -1,5 +1,5 @@
 {
-  "name": "Payment Recovery Handler",
+  "name": "Payment Recovery Workflow - Nexus Dunning",
   "nodes": [
     {
       "parameters": {
@@ -302,7 +302,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -530,7 +530,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -998,7 +998,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -1116,7 +1116,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -1144,7 +1144,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -1233,7 +1233,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -1507,7 +1507,7 @@
       "credentials": {
         "supabaseApi": {
           "id": "TFeIad5e7ybTrH79",
-          "name": "supabase-test"
+          "name": "Supabase Account - Portfolio Projects"
         }
       }
     },
@@ -2173,19 +2173,42 @@
     },
     {
       "parameters": {
-        "content": "## Made by:\n---\n# Benjamin Chisom Nnaemeka\n### </> Android Engineer | AI & Automation Engineer\n---\n\n\n👨🏻‍💻 Currently Building the community where AI automation practitioners build their reputation, share their work, and get paid for it.\n\n---\n\n\n### Follow me to see what I build next.\n\n╰┈➤ [Send me an Email](malito:benjamin.nnaemeka.dev@gmail.com)\n╰┈➤ [Follow me on GitHub](https://github.com/benjamin-nnaemeka-dev)\n╰┈➤ [Follow me on Threads](https://www.threads.com/@benjamin.nnaemeka.dev/)\n╰┈➤ [Connect with me on Linkedin](https://www.linkedin.com/in/benjamin.nnaemeka.dev/)",
-        "height": 344,
-        "width": 520,
-        "color": 5
+        "content": "### Made by:\n\n## Benjamin Chisom Nnaemeka \nFounder @APEXLY TECHNOLOGIES LIMITED\n\n# ---------------------------\n\n### Connect with me \n[Portfolio](https://benjamin-nnaemeka.dev) • [GitHub](https://github.com/benjamin-nnaemeka-dev) • [Linkedin](https://www.linkedin.com/in/benjamin.nnaemeka.dev/) • [Threads](https://www.threads.com/@benjamin.nnaemeka.dev/)",
+        "height": 232,
+        "width": 456,
+        "color": 7
       },
       "id": "934c44b8-055a-4557-b871-fec5ce92aea2",
       "name": "Sticky Note11",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1296,
-        1296
+        464,
+        1488
       ],
       "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "=https://api.paystack.co/customer/{{ $json.customer_code }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.paystack_secret_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1152,
+        1344
+      ],
+      "id": "b17a4379-8a61-4e07-ba9b-3a0562c03f90",
+      "name": "Fetch Customer From Paystack1"
     }
   ],
   "pinData": {},
@@ -2851,7 +2874,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "c60ecb4a-75b4-48fe-8414-162ecff9369f",
+  "versionId": "a501d54c-65b9-41d6-b809-52d659dae92d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6bfe217acf6d5cec26a86700aec1cfa6f5ef5346058d541d80b74d45c506bbdd"

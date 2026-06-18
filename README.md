@@ -1,192 +1,229 @@
-# Nexus Dunning
+# Nexus Dunning - Smart Payment Recovery for Paystack
 
-Nexus Dunning is a payment recovery automation tool for SaaS businesses. When a customer's payment fails, Nexus automatically sends a recovery sequence via email, WhatsApp, and Slack on behalf of the business — without any manual intervention.
-
-Built to demonstrate multi-channel automation, webhook architecture, and SaaS tooling.
+Nexus Dunning is a self-hosted Payment Recovery (Dunning) system designed for SaaS and subscription businesses using Paystack. By combining an interactive Next.js 16 dashboard with automated n8n workflows, Nexus Dunning intercepts failed subscription charges, executes progressive card charge retries, and coordinates customer-facing recovery campaigns across Email (Resend), WhatsApp (Facebook Graph API), and Slack.
 
 ---
 
-## Screenshots
-![Workflow](assets/workflow_screenshot.png)
-![Web](assets/web_screenshot.png)
+## System Architecture & Flow
 
-## What it does
+The system is split into two halves:
+1. **Frontend App:** A Next.js dashboard built with React 19 and Supabase auth where businesses sign up, onboard, configure keys, and monitor live payment statuses.
+2. **Backend Daemon (n8n):** An automated workflow pipeline handling webhook parsing, API coordination, communication schedules, and database logs.
 
-When a `charge.failed` webhook fires from Paystack:
+### Recovery & Retry Lifecycle
 
-1. Nexus identifies the business via a unique webhook token
-2. Stores the payment event in Supabase
-3. Sends a recovery email to the customer via Resend
-4. Sends a WhatsApp message to the customer via Meta Cloud API
-5. Sends a Slack alert to the business founder
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Paystack as Paystack Gateway
+    participant n8n as n8n Workflows
+    participant DB as Supabase DB
+    participant User as Customer
+    participant Channels as Channels (Email, WhatsApp, Slack)
 
-If the customer pays, a `charge.success` webhook fires and Nexus marks the event resolved and cancels any waiting retry sequences.
+    %% Charge Failed Webhook
+    Paystack->>n8n: Send 'charge.failed' event with client reference
+    n8n->>DB: Fetch business tokens & insert payment event record
+    n8n->>Paystack: Retrieve customer details (name, phone)
+    n8n->>Channels: Send Email (Resend), WhatsApp, & Slack Founder Alert
+    Note over Channels,User: Email includes link to Customer's Billing Portal
 
-A retry scheduler runs every hour — it picks up unresolved events, attempts to charge 
-the card again, and sends progressively different email copy on each attempt, up to 3 times.
+    %% Hourly Retry Loop
+    loop Every Hour (Scheduler)
+        n8n->>DB: Scan for unresolved card charges due for retry (reusable: true)
+        n8n->>Paystack: POST /charge_authorization (Retry transaction)
+        alt Retry Successful
+            Paystack-->>n8n: Return transaction success
+            n8n->>DB: Mark payment_events.is_resolved = true
+            n8n->>n8n: Call sub-workflow to terminate pending scheduler tasks
+            n8n->>Channels: Dispatch resolved success alerts
+        else Retry Failed
+            Paystack-->>n8n: Return transaction failure
+            n8n->>DB: Increment retry count, update next_retry_at (+24h)
+            n8n->>Channels: Dispatch warning Email 2 or Email 3 (based on retry count)
+        end
+    end
 
----
-
-## Tech stack
-
-| Layer | Tool |
-|---|---|
-| Workflow engine | n8n (self-hosted, Docker) |
-| Database + Auth | Supabase (Postgres) |
-| Email | Resend |
-| WhatsApp | Meta WhatsApp Cloud API |
-| Alerts | Slack incoming webhooks |
-| Payments | Paystack |
-| Frontend | Plain HTML, CSS, JS |
-| Tunnel (dev) | ngrok |
-
----
-
-## Architecture
-
-### Webhook routing
-Each business's Paystack webhook URL uses their `business.id` as the token:
-
-```
-{base_url}/webhook/paystack/charge-failed?token={business_id}
-```
-
-Incoming webhooks are routed by token — Nexus queries the `businesses` table by `id`, extracts credentials and context, then routes by event type.
-
-### Workflows
-- `Payment Recovery Handler` — main workflow, handles `charge.failed` and `charge.success`
-- `Resolve Payment Sequence` — sub-workflow, cancels waiting executions when payment recovers
-- `Schedule Retry Card Charge Job` — cron job, runs hourly, retries unresolved events up to 3 times
-- `Global Error Handler` — error logging, triggers mannually and automatically when error occurs in the workflow (not included in the workflows file, create one)
-
-### Email templates
-- Email 1 — sent immediately on failure, includes billing portal link if configured
-- Email 2 — sent on first retry (24h later)
-- Email 3 — sent on second retry (48h later)
-- No billing portal fallback — if `billing_portal_url` is not set, a softer email is sent with no CTA button
-
-### WhatsApp
-The n8n native WhatsApp node uses static credentials and cannot support per-business dynamic credentials. An HTTP Request node is used instead, with `whatsapp_phone_id` and `whatsapp_access_token` injected dynamically from the business record.
-
----
-
-## Database schema
-
-### `businesses`
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | Primary key |
-| user_id | uuid | Supabase auth user |
-| business_name | text | |
-| email | text | |
-| paystack_secret_key | text | |
-| webhook_token | uuid | Auto-generated, never editable |
-| billing_portal_url | text | Used as CTA in recovery emails |
-| whatsapp_phone_id | text | |
-| whatsapp_access_token | text | |
-| slack_webhook_url | text | |
-| is_onboarded | boolean | |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
-
-### `payment_events`
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | Primary key |
-| business_id | uuid | FK → businesses |
-| customer_email | text | |
-| customer_code | text | Paystack customer code |
-| amount | integer | In kobo |
-| currency | text | |
-| reference | text | Paystack reference |
-| failure_reason | text | |
-| authorization_code | text | For card retry |
-| channel | text | card, bank, etc. |
-| reusable | boolean | Whether card can be retried |
-| retry_count | integer | Max 3 |
-| next_retry_at | timestamptz | |
-| is_resolved | boolean | |
-| resolved_at | timestamptz | |
-| n8n_execution_id | text | For cancelling waiting executions |
-| payment_link | text | |
-| event_time | timestamptz | |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
-
----
-
-## Web frontend
-
-```
-nexus-web/
-  index.html            — entry point
-  css/
-    style.css           — shared styles
-  js/
-    config.js           — Supabase credentials (gitignored)
-    config.example.js   — template for config.js
-    supabase.js         — Supabase client init
-    auth.js             — shared checkAuth and signOut helpers
-  workflows/
-    Payment_Recovery_Handler.json
-  pages/
-    signup.html
-    login.html
-    onboarding.html     — collects Paystack keys, billing URL, WhatsApp, Slack
-    dashboard.html      — per-business payment events and recovery stats
+    %% Customer Manual Resolution
+    User->>Paystack: Update payment card on business's Billing Portal
+    Paystack->>n8n: Send 'charge.success' event
+    n8n->>DB: Mark payment_events.is_resolved = true & cancel scheduler queues
 ```
 
-### Setup
-1. Copy `js/config.example.js` to `js/config.js`
-2. Fill in your Supabase URL and anon key
-3. Open `index.html` in a browser or serve with any static file server
+---
+
+## Core Features
+
+- **High-Fidelity Analytics & Monitoring:**
+  - Real-time statistics: Total Failed Payments, Recovered Payments, Recovery Rate (%), and Active Dunning Sequences.
+  - Interactive activity log rendering exact failure reasons, retry counts, resolution states, and timestamps.
+  - Responsive layout with skeleton loaders, glowing sparklines, and theme toggling (Obsidian Dark Theme vs. Slate Light Theme).
+- **Self-Serve Business Onboarding:**
+  - Secure login and registration with Supabase Auth.
+  - Walkthrough wizard collecting Paystack API keys, custom Billing Portals, WhatsApp API tokens, and Slack webhook endpoints.
+- **Dynamic Multi-Channel Notifications:**
+  - **Emails via Resend:** Rich email notifications configured with active call-to-actions (pointing users directly to the billing portal so they can update cards).
+  - **WhatsApp via Facebook Graph API:** Generates dynamic HTTP requests injecting credentials per business profile, circumventing n8n's static credentials limitations.
+  - **Slack founder alerts:** Instant Slack notifications to notify business administrators of payment activity.
+- **Intelligent Card Charge Scheduler:**
+  - Automatically identifies reusable authorizations to attempt direct background card retries.
+  - Progressive retry engine executing up to 3 retry transactions spaced 24 hours apart.
+  - Instant cancel mechanics immediately terminating notification schedules once a payment succeeds.
 
 ---
 
-## Local setup
+## Tech Stack & Dependencies
 
-### Prerequisites
-- Docker (for n8n)
-- Supabase project
-- Paystack account
-- Meta developer app with WhatsApp Cloud API enabled
-- Resend account
-- ngrok (for local webhook testing)
+- **Frontend Core:** [Next.js 16](file:///C:/Users/HP/Desktop/nexus-dunning/package.json#L14) (App Router), [React 19](file:///C:/Users/HP/Desktop/nexus-dunning/package.json#L15), [TypeScript](file:///C:/Users/HP/Desktop/nexus-dunning/package.json#L24)
+- **Styling:** Vanilla CSS with custom theme design system (see [globals.css](file:///C:/Users/HP/Desktop/nexus-dunning/src/app/globals.css))
+- **Database & Auth:** [Supabase JS Client](file:///C:/Users/HP/Desktop/nexus-dunning/package.json#L12) (PostgreSQL instance)
+- **Icons:** [Lucide React](file:///C:/Users/HP/Desktop/nexus-dunning/package.json#L13)
+- **Automation Engine:** n8n (hosting the payment recovery workflow)
 
-### n8n
-```bash
-docker compose up -d
+---
+
+## Database Schema Setup
+
+To support this project, create the following two tables in your Supabase database instance. You can copy-paste the SQL queries below directly into the **Supabase SQL Editor**:
+
+```sql
+-- 1. Businesses Table (Configuration Profiles)
+CREATE TABLE public.businesses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+    business_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    is_onboarded BOOLEAN DEFAULT false,
+    paystack_secret_key TEXT,
+    billing_portal_url TEXT,
+    whatsapp_phone_id TEXT,
+    whatsapp_access_token TEXT,
+    slack_webhook_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Enable RLS (Row Level Security)
+ALTER TABLE public.businesses ENABLE ROW LEVEL SECURITY;
+
+-- Setup basic policies (Users can only see/edit their own business settings)
+CREATE POLICY "Users can view their own business profile" ON public.businesses
+    FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own business profile" ON public.businesses
+    FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own business profile" ON public.businesses
+    FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+
+-- 2. Payment Events Table (Dunning Tracking Log)
+CREATE TABLE public.payment_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+    customer_email TEXT NOT NULL,
+    customer_code TEXT NOT NULL,
+    amount BIGINT NOT NULL, -- Stored in smallest currency unit (kobo for NGN)
+    display_amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    reference TEXT NOT NULL UNIQUE,
+    failure_reason TEXT,
+    event_time TIMESTAMP WITH TIME ZONE,
+    display_event_time TEXT,
+    authorization_code TEXT,
+    reusable BOOLEAN DEFAULT false,
+    channel TEXT,
+    retry_count INTEGER DEFAULT 0,
+    next_retry_at TIMESTAMP WITH TIME ZONE,
+    n8n_execution_id TEXT,
+    is_resolved BOOLEAN DEFAULT false,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.payment_events ENABLE ROW LEVEL SECURITY;
+
+-- Policies for Payment Events
+CREATE POLICY "Users can view their business's payment logs" ON public.payment_events
+    FOR SELECT TO authenticated USING (
+        business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid())
+    );
 ```
 
-Import `workflows/Payment_Recovery_Handler.json` into your n8n instance.
+---
 
-See [WORKFLOW.md](./WORKFLOW.md) for full node-by-node documentation of the workflow.
+## Project Installation & Configuration
 
-### Environment
-Create `js/config.js` from the example file and fill in your credentials. This file is gitignored and never committed.
+### 1. Web Application (Dashboard Setup)
+
+First, install local dependencies and specify connection credentials.
+
+1. **Clone the repository:**
+   ```bash
+   git clone <your-repo-url>
+   cd nexus-dunning
+   ```
+
+2. **Configure environment variables:**
+   Create a `.env.local` file in the root directory (matching [example configurations](file:///C:/Users/HP/Desktop/nexus-dunning/.env.local)):
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-public-key
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
+
+4. **Launch development server:**
+   ```bash
+   pnpm dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view the client application.
+
+### 2. Automation Daemon (n8n Setup)
+
+The workflow schema is archived under [workflows/Payment Recovery Workflow - Nexus Dunning.json](file:///C:/Users/HP/Desktop/nexus-dunning/workflows/Payment%20Recovery%20Workflow%20-%20Nexus%20Dunning.json). 
+
+Detailed documentation of each n8n node logic is available in [WORKFLOW.md](file:///C:/Users/HP/Desktop/nexus-dunning/WORKFLOW.md).
+
+1. Spin up your n8n instance and create a new workflow.
+2. Select **Import from File** from the n8n menu and choose `Payment Recovery Workflow - Nexus Dunning.json`.
+3. Configure the following environment node integrations inside n8n:
+   - **Supabase credentials** (used in `Fetch Business`, `Store Payment Event`, `Get Pending Card Charge Jobs`, `Update Next Retry`, `Mark Payment Resolved`).
+   - **Resend integration** (configure Resend email node credentials for follow-ups).
+   - **Slack Webhook URL** (dynamically resolved but verify node setup).
 
 ---
 
-## Key decisions
+## Paystack Integration
 
-**No payment link generation** — instead of generating Paystack payment links dynamically, businesses provide a `billing_portal_url` during onboarding. This is used as the CTA in all recovery emails, simplifying the architecture significantly.
+To start capturing failed payments:
 
-**Business ID as webhook token** — each business's `id` (UUID) is used as the webhook token. This allows a single n8n webhook endpoint to serve multiple businesses without any additional token generation or storage.
-
-**HTTP Request over native WhatsApp node** — n8n's built-in WhatsApp node uses static credentials set at design time. Since each business has their own Meta credentials, the HTTP Request node is used with credentials injected dynamically from Supabase.
-
-**Row Level Security** — RLS is enabled on both `businesses` and `payment_events`. The frontend also filters by `business_id` manually as a secondary safeguard.
-
----
-
-## Status
-
-Complete. Not in production.
-
-Follow me to see what I build next.
+1. Deploy the Next.js frontend and n8n workflow.
+2. Complete the onboarding wizard at `/onboarding` to configure your keys.
+3. Access your **Payment Recovery Dashboard** at `/dashboard` and copy the auto-generated **Paystack Webhook URL** which looks like:
+   `https://n8n.yourdomain.com/webhook/paystack/charge-failed?token=YOUR_BUSINESS_ID`
+4. Log into your **Paystack Dashboard** and navigate to **Settings** -> **API Keys & Webhooks**.
+5. Paste your copied URL into the **Webhook URL** input field.
+6. Check or enable subscription/transaction events, specifically ensuring `charge.failed` and `charge.success` are captured and routed.
 
 ---
 
-## License
+## Source Code Walkthrough
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
+- [`/src/app/page.tsx`](file:///C:/Users/HP/Desktop/nexus-dunning/src/app/page.tsx) - Main entry gateway that verifies user auth tokens and redirects accordingly.
+- [`/src/app/signup/page.tsx`](file:///C:/Users/HP/Desktop/nexus-dunning/src/app/signup/page.tsx) - Form validating registration credentials, registering accounts with Supabase Auth, and provisioning a blank `businesses` table profile.
+- [`/src/app/onboarding/page.tsx`](file:///C:/Users/HP/Desktop/nexus-dunning/src/app/onboarding/page.tsx) - Multi-step wizard capturing API tokens (Paystack, WhatsApp, Slack, Resend, Billing Portal URLs) and updating onboarding parameters.
+- [`/src/app/dashboard/page.tsx`](file:///C:/Users/HP/Desktop/nexus-dunning/src/app/dashboard/page.tsx) - Analytics grid calculating metric rates and listing detailed log entries.
+- [`/src/lib/supabase.ts`](file:///C:/Users/HP/Desktop/nexus-dunning/src/lib/supabase.ts) - Setup file exporting the initialization of the Supabase Client.
+
+---
+
+## License & Attribution
+
+This project is open-source and released under the [MIT License](file:///C:/Users/HP/Desktop/nexus-dunning/LICENSE).
+
+Designed and engineered by **[Benjamin Chisom Nnaemeka](https://github.com/benjamin-nnaemeka-dev)**.
