@@ -1,6 +1,25 @@
-# Nexus Dunning - Smart Payment Recovery for Paystack
+<p align="center">
+  <img src="assets/logo_word.png" alt="Nexus Dunning" width="280" />
+  <br>
+  <br>
+  Payment Recovery Workflow Automation
+</p>
 
-Nexus Dunning is a self-hosted Payment Recovery (Dunning) system designed for SaaS and subscription businesses using Paystack. By combining an interactive Next.js 16 dashboard with automated n8n workflows, Nexus Dunning intercepts failed subscription charges, executes progressive card charge retries, and coordinates customer-facing recovery campaigns across Email (Resend), WhatsApp (Facebook Graph API), and Slack.
+---
+
+Nexus Dunning is a self-hosted Payment Recovery (Dunning) system designed for SaaS and subscription businesses using Paystack. By combining an interactive Next.js 16 dashboard with automated n8n workflows, Nexus Dunning intercepts failed subscription charges, executes progressive card charge retries, and coordinates customer-facing recovery campaigns across Email (Resend), WhatsApp (Facebook Graph API), and Slack. [See Workflow Documentation](WORKFLOW.md)
+
+---
+
+## Screenshots
+
+| Login | Onboarding (Step 1) | Onboarding (Step 2) |
+|:---:|:---:|:---:|
+| ![Login](assets/login.png) | ![Onboarding Step 1](assets/onboarding1.png) | ![Onboarding Step 2](assets/onboarding2.png) |
+
+| Onboarding (Step 3) | Dashboard | n8n Workflow |
+|:---:|:---:|:---:|
+| ![Onboarding Step 3](assets/onboarding3.png) | ![Dashboard](assets/dashboard.png) | ![n8n Workflow](assets/workflow.png) |
 
 ---
 
