@@ -393,14 +393,13 @@ export default function DashboardPage() {
                 ) : events.length === 0 ? (
                   // Empty state
                   <tr>
-                    <td colSpan={6} className="table-state-cell">
-                      <Database size={40} style={{ marginBottom: '16px' }} />
-                      <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                        No failed payments registered
-                      </p>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        Once a `charge.failed` webhook is dispatched from your Paystack account, it will automatically populate here.
-                      </p>
+                    <td colSpan={6} className="table-state-cell" style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                        <Database size={40} style={{ marginBottom: '16px' }} />
+                        <p style={{ fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
+                          No failed payments registered
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (

@@ -3,6 +3,9 @@
   <br>
   <br>
   Payment Recovery Workflow Automation
+  <br>
+  <br>
+  <a href="https://nexus-dunning.benjamin-nnaemeka.dev">Visit Site Live</a>
 </p>
 
 ---
@@ -15,11 +18,11 @@ Nexus Dunning is a self-hosted Payment Recovery (Dunning) system designed for Sa
 
 | Login | Onboarding (Step 1) | Onboarding (Step 2) |
 |:---:|:---:|:---:|
-| ![Login](assets/login.png) | ![Onboarding Step 1](assets/onboarding1.png) | ![Onboarding Step 2](assets/onboarding2.png) |
+| <img src="assets/login.png" width="280"/> | <img src="assets/onboarding1.png" width="280"/> | <img src="assets/onboarding2.png" width="280"/> |
 
 | Onboarding (Step 3) | Dashboard | n8n Workflow |
 |:---:|:---:|:---:|
-| ![Onboarding Step 3](assets/onboarding3.png) | ![Dashboard](assets/dashboard.png) | ![n8n Workflow](assets/workflow.png) |
+| <img src="assets/onboarding3.png" width="280"/> | <img src="assets/dashboard.png" width="280"/> | <img src="assets/workflow_light.png" width="280"/> |
 
 ---
 
