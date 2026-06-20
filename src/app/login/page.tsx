@@ -177,14 +177,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Pane (Form Card Container) */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '30px',
-        position: 'relative'
-      }}>
+      <div className="login-form-pane">
         <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '420px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '6px', letterSpacing: '-0.5px' }}>
             Welcome back
@@ -256,13 +249,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 900px) {
-          .showcase-pane {
-            display: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

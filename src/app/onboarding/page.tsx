@@ -168,7 +168,7 @@ export default function OnboardingPage() {
         pointerEvents: 'none'
       }} />
 
-      <div className="glass-card fade-in" style={{ width: '100%', maxWidth: '560px', padding: '48px 40px' }}>
+      <div className="glass-card onboarding-card fade-in" style={{ width: '100%', maxWidth: '560px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '6px', letterSpacing: '-0.5px' }}>
           Configure Nexus Dunning
         </h1>

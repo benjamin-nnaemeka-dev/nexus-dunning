@@ -204,7 +204,7 @@ export default function DashboardPage() {
       <main className="container fade-in">
         
         {/* Header */}
-        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="page-header dashboard-header">
           <div>
             <h1 className="page-title">Payment Recovery Dashboard</h1>
             <p className="page-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -369,23 +369,25 @@ export default function DashboardPage() {
                   // Skeleton loader - matches structure of real rows to prevent layout shifting
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div className="skeleton-circle skeleton-shimmer" />
-                        <div className="skeleton-bar skeleton-shimmer" style={{ width: '120px' }} />
+                      <td data-label="Customer">
+                        <div className="cell-customer">
+                          <div className="skeleton-circle skeleton-shimmer" />
+                          <div className="skeleton-bar skeleton-shimmer" style={{ width: '120px' }} />
+                        </div>
                       </td>
-                      <td>
+                      <td data-label="Amount">
                         <div className="skeleton-bar skeleton-shimmer" style={{ width: '70px' }} />
                       </td>
-                      <td>
+                      <td data-label="Reason">
                         <div className="skeleton-bar skeleton-shimmer" style={{ width: '140px' }} />
                       </td>
-                      <td>
+                      <td data-label="Retries">
                         <div className="skeleton-bar skeleton-shimmer" style={{ width: '30px' }} />
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <div className="skeleton-bar skeleton-shimmer" style={{ width: '85px', borderRadius: '9999px', height: '22px' }} />
                       </td>
-                      <td>
+                      <td data-label="Date">
                         <div className="skeleton-bar skeleton-shimmer" style={{ width: '110px' }} />
                       </td>
                     </tr>
@@ -406,34 +408,24 @@ export default function DashboardPage() {
                   // Actual logs
                   events.map((e) => (
                     <tr key={e.id}>
-                      <td style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: 'none' }}>
-                        <div style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          background: 'rgba(99, 102, 241, 0.1)',
-                          border: '1px solid var(--border-subtle)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          color: 'var(--accent)',
-                          fontWeight: 600
-                        }}>
-                          {e.customer_email.slice(0, 2).toUpperCase()}
+                      <td data-label="Customer">
+                        <div className="cell-customer">
+                          <div className="avatar-circle">
+                            {e.customer_email.slice(0, 2).toUpperCase()}
+                          </div>
+                          <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{e.customer_email}</span>
                         </div>
-                        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{e.customer_email}</span>
                       </td>
-                      <td>
+                      <td data-label="Amount">
                         <strong style={{ color: 'var(--text-primary)' }}>{formatAmount(e.amount, e.currency)}</strong>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
+                      <td data-label="Reason" style={{ color: 'var(--text-secondary)' }}>
                         {e.failure_reason || 'Declined / Insufficient funds'}
                       </td>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>
+                      <td data-label="Retries" style={{ fontFamily: 'var(--font-mono)' }}>
                         {e.retry_count ?? 0} / 3
                       </td>
-                      <td>
+                      <td data-label="Status">
                         {e.is_resolved ? (
                           <span className="badge badge-success">
                             <CheckCircle2 size={11} />
@@ -446,7 +438,7 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>
+                      <td data-label="Date" style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>
                         {new Date(e.created_at).toLocaleDateString('en-US', {
                           day: 'numeric',
                           month: 'short',
@@ -466,14 +458,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Subtle Footer */}
-      <footer style={{
-        marginTop: 'auto',
-        borderTop: '1px solid var(--border-subtle)',
-        padding: '24px 40px',
-        textAlign: 'center',
-        fontSize: '12px',
-        color: 'var(--text-muted)'
-      }}>
+      <footer className="site-footer">
         Nexus Recovery Engine &copy; {new Date().getFullYear()} — Automated Payment Recovery.
       </footer>
       
