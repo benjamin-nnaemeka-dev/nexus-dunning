@@ -1,0 +1,29 @@
+name: Supabase Keepalive
+on:
+  schedule:
+    - cron: '0 9 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Insert keepalive row
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -s -X POST "${SUPABASE_URL}/rest/v1/ping" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Content-Profile: keepalive" \
+            -H "Prefer: return=minimal" \
+            -d '{}'
+
+          curl -s -X POST "${SUPABASE_URL}/rest/v1/rpc/cleanup_old_pings" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Accept-Profile: keepalive" \
+            -d '{}'
